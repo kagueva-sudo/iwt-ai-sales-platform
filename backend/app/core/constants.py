@@ -25,11 +25,11 @@ class AIValidationStatus(StrEnum):
     APPROVED = "approved"
     NEEDS_DATA = "needs_data"
     HANDOFF_REQUIRED = "handoff_required"
-    REJECTED = "rejected"
 
 
 class HandoffReason(StrEnum):
     NO_CONFIRMED_DATA = "no_confirmed_data"
+    LLM_ERROR = "llm_error"
     COMPLEX_PROJECT = "complex_project"
     COMMERCIAL_OFFER = "commercial_offer"
     COMPLAINT = "complaint"

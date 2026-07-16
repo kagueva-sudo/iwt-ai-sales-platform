@@ -17,6 +17,8 @@ class HandoffRepository:
             customer_contact=handoff_case.customer_contact,
             message=handoff_case.message,
             reason=handoff_case.reason.value,
+            history="\n".join(handoff_case.history) if handoff_case.history else None,
+            ai_response=handoff_case.ai_response,
             ai_recommendation=handoff_case.ai_recommendation,
             created_at=handoff_case.created_at,
         )

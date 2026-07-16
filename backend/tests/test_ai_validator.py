@@ -42,3 +42,32 @@ def test_validator_requires_data_without_sources() -> None:
     result = validator.validate(ai_response, product_data)
 
     assert result.status == AIValidationStatus.NEEDS_DATA
+
+
+def test_validator_blocks_price_without_confirmed_price() -> None:
+    validator = AIValidator()
+    product_data = ProductSearchResult(
+        query="насос",
+        products=[Product(sku="P-1", name="Насос", source="1c")],
+        source="1c",
+    )
+    ai_response = AIResponse(text="Цена насоса 1000 рублей.", sources=["1c"])
+
+    result = validator.validate(ai_response, product_data)
+
+    assert result.status == AIValidationStatus.NEEDS_DATA
+    assert "price" in (result.reason or "")
+
+
+def test_validator_approves_price_with_confirmed_price() -> None:
+    validator = AIValidator()
+    product_data = ProductSearchResult(
+        query="насос",
+        products=[Product(sku="P-1", name="Насос", price=1000, source="1c")],
+        source="1c",
+    )
+    ai_response = AIResponse(text="Цена насоса 1000 рублей.", sources=["1c"])
+
+    result = validator.validate(ai_response, product_data)
+
+    assert result.status == AIValidationStatus.APPROVED
