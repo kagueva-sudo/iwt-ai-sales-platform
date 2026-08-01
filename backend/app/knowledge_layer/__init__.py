@@ -1,0 +1,1 @@
+"""Confirmed knowledge source layer."""

@@ -28,8 +28,14 @@ class AIValidationStatus(StrEnum):
 
 
 class HandoffReason(StrEnum):
+    NO_INFORMATION = "no_information"
     NO_CONFIRMED_DATA = "no_confirmed_data"
+    PRICE_UNKNOWN = "price_unknown"
+    AVAILABILITY_UNKNOWN = "availability_unknown"
     LLM_ERROR = "llm_error"
+    TIMEOUT = "timeout"
+    CLIENT_REQUEST_MANAGER = "client_request_manager"
+    COMPLEX_REQUEST = "complex_request"
     COMPLEX_PROJECT = "complex_project"
     COMMERCIAL_OFFER = "commercial_offer"
     COMPLAINT = "complaint"
