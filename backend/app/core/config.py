@@ -14,6 +14,10 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     openai_model: str = "gpt-4o-mini"
 
+    catalog_api_url: str = ""
+    catalog_api_key: str = ""
+    catalog_timeout: float = 10.0
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
 

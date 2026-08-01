@@ -58,6 +58,9 @@ Required variables:
 - `DATABASE_URL` - SQLAlchemy PostgreSQL connection string.
 - `OPENAI_API_KEY` - OpenAI API key.
 - `OPENAI_MODEL` - OpenAI model name.
+- `CATALOG_API_URL` - future iwt.ru catalog REST API base URL.
+- `CATALOG_API_KEY` - future catalog API key.
+- `CATALOG_TIMEOUT` - catalog API timeout in seconds.
 
 ## Ubuntu 24.04 Deployment
 
