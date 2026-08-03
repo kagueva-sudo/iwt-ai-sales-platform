@@ -1,11 +1,8 @@
-from dataclasses import dataclass, field
+"""Compatibility exports for Knowledge Base schemas.
 
+Canonical domain model lives in app.domain.knowledge.
+"""
 
-@dataclass(slots=True)
-class KnowledgeItem:
-    id: str
-    title: str
-    content: str
-    category: str = "general"
-    tags: list[str] = field(default_factory=list)
-    metadata: dict[str, str] = field(default_factory=dict)
+from app.domain.knowledge import KnowledgeItem
+
+__all__ = ["KnowledgeItem"]

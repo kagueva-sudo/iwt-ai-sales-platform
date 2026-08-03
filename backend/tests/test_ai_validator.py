@@ -63,7 +63,15 @@ def test_validator_approves_price_with_confirmed_price() -> None:
     validator = AIValidator()
     product_data = ProductSearchResult(
         query="насос",
-        products=[Product(sku="P-1", name="Насос", price=1000, source="1c")],
+        products=[
+            Product(
+                sku="P-1",
+                name="Насос",
+                price=1000,
+                source="1c",
+                confirmed_fields={"sku", "name", "price"},
+            )
+        ],
         source="1c",
     )
     ai_response = AIResponse(text="Цена насоса 1000 рублей.", sources=["1c"])
@@ -71,3 +79,26 @@ def test_validator_approves_price_with_confirmed_price() -> None:
     result = validator.validate(ai_response, product_data)
 
     assert result.status == AIValidationStatus.APPROVED
+
+
+def test_validator_blocks_price_when_field_is_not_confirmed() -> None:
+    validator = AIValidator()
+    product_data = ProductSearchResult(
+        query="насос",
+        products=[
+            Product(
+                sku="P-1",
+                name="Насос",
+                price=1000,
+                source="website",
+                confirmed_fields={"sku", "name"},
+            )
+        ],
+        source="website",
+    )
+    ai_response = AIResponse(text="Цена насоса 1000 рублей.", sources=["website"])
+
+    result = validator.validate(ai_response, product_data)
+
+    assert result.status == AIValidationStatus.NEEDS_DATA
+    assert "price" in (result.reason or "")

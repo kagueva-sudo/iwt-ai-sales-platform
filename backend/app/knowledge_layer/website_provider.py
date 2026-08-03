@@ -1,26 +1,34 @@
 from app.contracts.knowledge_provider import KnowledgeProvider
+from app.contracts.website_provider import WebsiteProvider
 from app.domain.products import Product
 from app.domain.sources import SourceSelectionResult, VerifiedSource
-from app.providers.website_catalog_provider import WebsiteCatalogProvider
+from app.domain.website import CompanyInfo, ContactInfo, FAQItem
 
 
 class WebsiteKnowledgeProvider(KnowledgeProvider):
     provider_name = "website_provider"
 
-    def __init__(self, website_catalog_provider: WebsiteCatalogProvider | None = None) -> None:
-        self.website_catalog_provider = website_catalog_provider or WebsiteCatalogProvider()
+    def __init__(self, website_provider: WebsiteProvider) -> None:
+        self.website_provider = website_provider
 
     async def search(self, query: str) -> SourceSelectionResult:
-        product_result = await self.website_catalog_provider.search_products(query)
+        website_result = await self.website_provider.search(query)
         return SourceSelectionResult(
             query=query,
-            sources=[self._to_verified_source(product) for product in product_result.products],
+            sources=[
+                *[self._product_to_source(product) for product in website_result.products],
+                *[self._faq_to_source(item) for item in website_result.faq_items],
+                *[self._company_info_to_source(item) for item in website_result.company_info],
+                *[self._contact_to_source(item) for item in website_result.contacts],
+                *website_result.sources,
+            ],
         )
 
-    def _to_verified_source(self, product: Product) -> VerifiedSource:
+    def _product_to_source(self, product: Product) -> VerifiedSource:
         metadata = {
             "sku": product.sku,
             "source": product.source,
+            "confirmed_fields": ",".join(sorted(product.confirmed_fields)),
         }
         if product.price is not None:
             metadata["price"] = str(product.price)
@@ -35,4 +43,36 @@ class WebsiteKnowledgeProvider(KnowledgeProvider):
             title=product.name,
             content=product.description or product.name,
             metadata=metadata,
+        )
+
+    def _faq_to_source(self, item: FAQItem) -> VerifiedSource:
+        return VerifiedSource(
+            source_id=item.id,
+            source_type=self.provider_name,
+            title=item.question,
+            content=item.answer,
+            metadata={"topic": item.topic or "", "confirmed_fields": ",".join(sorted(item.confirmed_fields))},
+        )
+
+    def _company_info_to_source(self, item: CompanyInfo) -> VerifiedSource:
+        return VerifiedSource(
+            source_id=item.topic,
+            source_type=self.provider_name,
+            title=item.title,
+            content=item.content,
+            metadata={"confirmed_fields": ",".join(sorted(item.confirmed_fields))},
+        )
+
+    def _contact_to_source(self, item: ContactInfo) -> VerifiedSource:
+        content = "\n".join(
+            value
+            for value in [item.phone, item.email, item.address, item.working_hours]
+            if value
+        )
+        return VerifiedSource(
+            source_id="contacts",
+            source_type=self.provider_name,
+            title="Контакты",
+            content=content,
+            metadata={"confirmed_fields": ",".join(sorted(item.confirmed_fields))},
         )

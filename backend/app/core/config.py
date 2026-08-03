@@ -18,6 +18,10 @@ class Settings(BaseSettings):
     catalog_api_key: str = ""
     catalog_timeout: float = 10.0
 
+    website_api_url: str = ""
+    website_api_key: str = ""
+    website_api_timeout: float = 10.0
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
 

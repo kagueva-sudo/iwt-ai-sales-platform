@@ -1,6 +1,7 @@
 import pytest
 
-from app.domain.products import Product, ProductSearchResult
+from app.domain.products import Product
+from app.domain.website import WebsiteSearchResult
 from app.knowledge_layer.knowledge_base_provider import InMemoryKnowledgeBaseProvider
 from app.knowledge_layer.schemas import KnowledgeItem
 from app.knowledge_layer.source_selector import SourceSelector
@@ -10,9 +11,9 @@ from app.knowledge_layer.website_provider import WebsiteKnowledgeProvider
 pytestmark = pytest.mark.asyncio
 
 
-class FakeWebsiteCatalogProvider:
-    async def search_products(self, query: str) -> ProductSearchResult:
-        return ProductSearchResult(
+class FakeWebsiteProvider:
+    async def search(self, query: str) -> WebsiteSearchResult:
+        return WebsiteSearchResult(
             query=query,
             products=[
                 Product(
@@ -22,10 +23,25 @@ class FakeWebsiteCatalogProvider:
                     price=1000,
                     stock_qty=5,
                     source="website_catalog",
+                    confirmed_fields={"sku", "name", "description", "price", "stock_qty"},
                 )
             ],
-            source="website_catalog",
         )
+
+    async def get_product_by_sku(self, sku: str) -> Product | None:
+        return None
+
+    async def get_delivery_info(self) -> None:
+        return None
+
+    async def get_payment_info(self) -> None:
+        return None
+
+    async def get_warranty_info(self) -> None:
+        return None
+
+    async def get_contacts(self) -> None:
+        return None
 
 
 async def test_knowledge_base_provider_returns_confirmed_source() -> None:
@@ -40,7 +56,7 @@ async def test_knowledge_base_provider_returns_confirmed_source() -> None:
 
 
 async def test_website_knowledge_provider_returns_product_source() -> None:
-    provider = WebsiteKnowledgeProvider(FakeWebsiteCatalogProvider())
+    provider = WebsiteKnowledgeProvider(FakeWebsiteProvider())
 
     result = await provider.search("насос")
 
@@ -53,7 +69,7 @@ async def test_source_selector_combines_sources_in_provider_order() -> None:
     knowledge_provider = InMemoryKnowledgeBaseProvider(
         items=[KnowledgeItem(id="faq-1", title="Насос", content="FAQ по насосам.")]
     )
-    website_provider = WebsiteKnowledgeProvider(FakeWebsiteCatalogProvider())
+    website_provider = WebsiteKnowledgeProvider(FakeWebsiteProvider())
     selector = SourceSelector([knowledge_provider, website_provider])
 
     result = await selector.select_sources("насос")

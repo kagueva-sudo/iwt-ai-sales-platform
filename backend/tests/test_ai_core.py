@@ -26,7 +26,15 @@ class ConfirmedProductProvider(ProductProvider):
     async def search_products(self, query: str) -> ProductSearchResult:
         return ProductSearchResult(
             query=query,
-            products=[Product(sku="P-1", name="Насос", price=1000, source="1c")],
+            products=[
+                Product(
+                    sku="P-1",
+                    name="Насос",
+                    price=1000,
+                    source="1c",
+                    confirmed_fields={"sku", "name", "price"},
+                )
+            ],
             source="1c",
         )
 

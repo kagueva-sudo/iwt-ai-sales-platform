@@ -35,6 +35,18 @@ class WebsiteCatalogProvider(ProductProvider):
         )
 
     def _to_domain_product(self, product: CatalogProductDTO) -> Product:
+        confirmed_fields = {"sku", "name"}
+        if product.description:
+            confirmed_fields.add("description")
+        if product.price is not None:
+            confirmed_fields.add("price")
+        if product.stock_qty is not None:
+            confirmed_fields.add("stock_qty")
+        if product.characteristics:
+            confirmed_fields.add("characteristics")
+        if product.delivery_terms:
+            confirmed_fields.add("delivery_terms")
+
         return Product(
             sku=product.sku,
             name=product.name,
@@ -44,4 +56,5 @@ class WebsiteCatalogProvider(ProductProvider):
             characteristics=product.characteristics,
             delivery_terms=product.delivery_terms,
             source=self.provider_name,
+            confirmed_fields=confirmed_fields,
         )
