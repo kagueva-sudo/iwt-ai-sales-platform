@@ -1,5 +1,6 @@
 from app.ai_core.llm_provider import LLMProvider
 from app.ai_core.prompts import SAFE_HANDOFF_MESSAGE, SYSTEM_PROMPT
+from app.ai_core.source_mapping import products_to_verified_sources
 from app.ai_core.validator import AIValidator
 from app.core.constants import AIValidationStatus, HandoffReason, MessageDirection, ProcessingStatus
 from app.core.errors import ProviderError
@@ -11,6 +12,11 @@ from app.services.handoff_service import HandoffService
 
 
 class AISalesCore:
+    """Legacy orchestrator used by MessageService.
+
+    Prefer AICore + MessagePipelineService for Architecture Freeze v2.2 pipeline.
+    """
+
     def __init__(
         self,
         llm_provider: LLMProvider,
@@ -53,7 +59,8 @@ class AISalesCore:
                     handoff_reason=HandoffReason.LLM_ERROR,
                 )
 
-        validation = self.validator.validate(ai_response, product_data)
+        verification = products_to_verified_sources(product_data)
+        validation = self.validator.validate(ai_response, verification)
         handoff_id: str | None = None
 
         if validation.status != AIValidationStatus.APPROVED:

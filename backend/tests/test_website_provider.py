@@ -2,6 +2,7 @@ from typing import Any
 
 import pytest
 
+from app.ai_core.source_mapping import products_to_verified_sources
 from app.ai_core.validator import AIValidator
 from app.core.constants import AIValidationStatus
 from app.domain.ai import AIResponse
@@ -88,7 +89,7 @@ async def test_website_provider_marks_incomplete_product_without_price_confirmat
     product_data = ProductSearchResult(query="насос", products=[product], source="website")
     validation = AIValidator().validate(
         AIResponse(text="Цена насоса 1000 рублей.", sources=["website"], requested_facts={"price"}),
-        product_data,
+        products_to_verified_sources(product_data),
     )
 
     assert "price" not in product.confirmed_fields

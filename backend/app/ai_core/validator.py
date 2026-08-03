@@ -1,19 +1,25 @@
 from app.ai_core.prompts import SAFE_HANDOFF_MESSAGE
 from app.core.constants import AIValidationStatus
 from app.domain.ai import AIResponse, ValidationResult
-from app.domain.products import ProductSearchResult
+from app.domain.sources import VerifiedSource
 
 
-COMMERCIAL_FACT_CHECKS = {
-    "price": "has_confirmed_price",
-    "stock": "has_confirmed_stock",
-    "characteristics": "has_confirmed_characteristics",
-    "delivery_terms": "has_confirmed_delivery_terms",
+FACT_TO_CONFIRMED_FIELDS: dict[str, set[str]] = {
+    "price": {"price"},
+    "stock": {"stock_qty", "availability_status"},
+    "characteristics": {"characteristics", "description"},
+    "delivery_terms": {"delivery_terms"},
 }
 
 
 class AIValidator:
-    def validate(self, ai_response: AIResponse, product_data: ProductSearchResult | None) -> ValidationResult:
+    """Validates a finished AIResponse against already selected VerifiedSources."""
+
+    def validate(
+        self,
+        ai_response: AIResponse,
+        verified_sources: list[VerifiedSource],
+    ) -> ValidationResult:
         if ai_response.needs_handoff:
             return ValidationResult(
                 status=AIValidationStatus.HANDOFF_REQUIRED,
@@ -22,21 +28,20 @@ class AIValidator:
                 sources=ai_response.sources,
             )
 
-        if product_data is not None and not product_data.has_confirmed_data:
+        if not verified_sources:
             return ValidationResult(
                 status=AIValidationStatus.NEEDS_DATA,
                 approved_text=SAFE_HANDOFF_MESSAGE,
-                reason="No confirmed product data available.",
-                sources=[product_data.source],
+                reason="No confirmed verified sources available.",
             )
 
-        missing_facts = self._find_missing_commercial_facts(ai_response, product_data)
+        missing_facts = self._find_missing_commercial_facts(ai_response, verified_sources)
         if missing_facts:
             return ValidationResult(
                 status=AIValidationStatus.NEEDS_DATA,
                 approved_text=SAFE_HANDOFF_MESSAGE,
                 reason=f"Missing confirmed commercial facts: {', '.join(sorted(missing_facts))}.",
-                sources=[product_data.source] if product_data else [],
+                sources=self._source_ids(verified_sources),
             )
 
         if not ai_response.sources:
@@ -44,6 +49,7 @@ class AIValidator:
                 status=AIValidationStatus.NEEDS_DATA,
                 approved_text=SAFE_HANDOFF_MESSAGE,
                 reason="AI response has no confirmed sources.",
+                sources=self._source_ids(verified_sources),
             )
 
         return ValidationResult(
@@ -55,21 +61,31 @@ class AIValidator:
     def _find_missing_commercial_facts(
         self,
         ai_response: AIResponse,
-        product_data: ProductSearchResult | None,
+        verified_sources: list[VerifiedSource],
     ) -> set[str]:
         requested_facts = self._detect_commercial_facts(ai_response.text) | ai_response.requested_facts
         if not requested_facts:
             return set()
 
-        if product_data is None or not product_data.has_confirmed_data:
-            return requested_facts
-
         missing_facts: set[str] = set()
         for fact in requested_facts:
-            check_name = COMMERCIAL_FACT_CHECKS.get(fact)
-            if check_name and not getattr(product_data, check_name):
+            if not self._sources_confirm_fact(verified_sources, fact):
                 missing_facts.add(fact)
         return missing_facts
+
+    def _sources_confirm_fact(self, verified_sources: list[VerifiedSource], fact: str) -> bool:
+        needed_fields = FACT_TO_CONFIRMED_FIELDS.get(fact, {fact})
+        for source in verified_sources:
+            confirmed_fields = self._parse_confirmed_fields(source)
+            if confirmed_fields & needed_fields:
+                return True
+        return False
+
+    def _parse_confirmed_fields(self, source: VerifiedSource) -> set[str]:
+        raw = source.metadata.get("confirmed_fields", "")
+        if not raw.strip():
+            return set()
+        return {part.strip() for part in raw.split(",") if part.strip()}
 
     def _detect_commercial_facts(self, text: str) -> set[str]:
         lowered = text.lower()
@@ -84,3 +100,6 @@ class AIValidator:
             for fact, keywords in fact_keywords.items()
             if any(keyword in lowered for keyword in keywords)
         }
+
+    def _source_ids(self, verified_sources: list[VerifiedSource]) -> list[str]:
+        return [source.source_id for source in verified_sources]

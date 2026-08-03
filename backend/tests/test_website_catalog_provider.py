@@ -1,5 +1,6 @@
 import pytest
 
+from app.ai_core.source_mapping import products_to_verified_sources
 from app.ai_core.validator import AIValidator
 from app.core.constants import AIValidationStatus
 from app.domain.ai import AIResponse
@@ -52,7 +53,10 @@ async def test_website_catalog_provider_missing_product_requires_data() -> None:
     provider = WebsiteCatalogProvider(client=FakeCatalogClient(products=[]))
 
     result = await provider.search_products("несуществующий товар")
-    validation = AIValidator().validate(AIResponse(text="Товар найден.", sources=[result.source]), result)
+    validation = AIValidator().validate(
+        AIResponse(text="Товар найден.", sources=[result.source]),
+        products_to_verified_sources(result),
+    )
 
     assert not result.has_confirmed_data
     assert validation.status == AIValidationStatus.NEEDS_DATA
@@ -66,7 +70,7 @@ async def test_website_catalog_provider_missing_price_requires_data() -> None:
     result = await provider.search_products("насос")
     validation = AIValidator().validate(
         AIResponse(text="Цена насоса 1000 рублей.", sources=[result.source], requested_facts={"price"}),
-        result,
+        products_to_verified_sources(result),
     )
 
     assert validation.status == AIValidationStatus.NEEDS_DATA
@@ -81,7 +85,7 @@ async def test_website_catalog_provider_missing_availability_requires_data() -> 
     result = await provider.search_products("насос")
     validation = AIValidator().validate(
         AIResponse(text="Насос есть в наличии.", sources=[result.source], requested_facts={"stock"}),
-        result,
+        products_to_verified_sources(result),
     )
 
     assert validation.status == AIValidationStatus.NEEDS_DATA
@@ -92,7 +96,10 @@ async def test_website_catalog_provider_api_error_requires_data() -> None:
     provider = WebsiteCatalogProvider(client=FakeCatalogClient(error=CatalogServerError("catalog failed")))
 
     result = await provider.search_products("насос")
-    validation = AIValidator().validate(AIResponse(text="Товар найден.", sources=[result.source]), result)
+    validation = AIValidator().validate(
+        AIResponse(text="Товар найден.", sources=[result.source]),
+        products_to_verified_sources(result),
+    )
 
     assert not result.has_confirmed_data
     assert validation.status == AIValidationStatus.NEEDS_DATA
