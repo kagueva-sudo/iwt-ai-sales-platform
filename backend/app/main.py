@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from app.api.gateway import router as gateway_router
 from app.api.health import router as health_router
 from app.api.messages import router as messages_router
 from app.core.config import get_settings
@@ -23,4 +24,5 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(title=settings.app_name, debug=settings.debug, lifespan=lifespan)
 
 app.include_router(health_router)
+app.include_router(gateway_router)
 app.include_router(messages_router)
