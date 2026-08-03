@@ -2,7 +2,6 @@ from app.ai_core.openai_provider import OpenAIProvider
 from app.ai_core.orchestrator import AISalesCore
 from app.ai_core.validator import AIValidator
 from app.core.config import get_settings
-from app.core.constants import MessageDirection
 from app.db.session import SessionLocal
 from app.domain.customers import Customer
 from app.domain.messages import Message
@@ -12,7 +11,6 @@ from app.repositories.customers import CustomerRepository
 from app.repositories.errors import ErrorLogRepository
 from app.repositories.handoff import HandoffRepository
 from app.repositories.messages import MessageRepository
-from app.schemas.messages import IncomingMessageRequest
 from app.services.handoff_service import HandoffService
 
 
@@ -32,7 +30,7 @@ class MessageService:
     def __init__(self, ai_core: AISalesCore | None = None) -> None:
         self.ai_core = ai_core
 
-    async def process_incoming_message(self, payload: IncomingMessageRequest) -> Message:
+    async def process_message(self, message: Message) -> Message:
         with SessionLocal() as session:
             message_repository = MessageRepository(session)
             ai_log_repository = AILogRepository(session)
@@ -41,16 +39,8 @@ class MessageService:
             handoff_repository = HandoffRepository(session)
             ai_core = self.ai_core or build_ai_core(handoff_repository)
 
-            message = Message(
-                text=payload.text,
-                channel=payload.channel,
-                direction=MessageDirection.INBOUND,
-                customer_id=payload.customer_id,
-                customer_contact=payload.customer_contact,
-            )
-
             try:
-                customer_repository.get_or_create(Customer(id=payload.customer_id, contact=payload.customer_contact))
+                customer_repository.get_or_create(Customer(id=message.customer_id, contact=message.customer_contact))
                 message_repository.add(message)
                 session.flush()
 
