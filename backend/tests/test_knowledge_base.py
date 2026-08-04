@@ -82,3 +82,70 @@ async def test_source_selector_uses_knowledge_provider_contract() -> None:
     result = await selector.select_sources("оплата")
 
     assert [source.source_id for source in result.sources] == ["rule-payment"]
+
+
+async def test_knowledge_search_is_case_insensitive() -> None:
+    service = KnowledgeSearchService(InMemoryKnowledgeRepository(_sample_items()))
+
+    result = await service.search("ДОСТАВКА")
+
+    assert [item.id for item in result] == ["faq-delivery"]
+
+
+async def test_knowledge_search_supports_multi_word_query() -> None:
+    service = KnowledgeSearchService(InMemoryKnowledgeRepository(_sample_items()))
+
+    result = await service.search("доставка москве")
+
+    assert [item.id for item in result] == ["faq-delivery"]
+
+
+async def test_knowledge_search_ranks_by_match_count() -> None:
+    items = [
+        KnowledgeItem(
+            id="weak-match",
+            title="Общая информация",
+            content="У нас есть насосы.",
+            category="general",
+            tags=["каталог"],
+        ),
+        KnowledgeItem(
+            id="strong-match",
+            title="Насос промышленный",
+            content="Насос для промышленности. Насос доступен на складе.",
+            category="products",
+            tags=["насос", "склад"],
+        ),
+        KnowledgeItem(
+            id="medium-match",
+            title="Каталог",
+            content="Насос указан в прайсе.",
+            category="products",
+            tags=["насос"],
+        ),
+    ]
+    service = KnowledgeSearchService(InMemoryKnowledgeRepository(items))
+
+    result = await service.search("насос склад")
+
+    assert [item.id for item in result] == ["strong-match", "medium-match", "weak-match"]
+
+
+async def test_knowledge_search_matches_category() -> None:
+    service = KnowledgeSearchService(
+        InMemoryKnowledgeRepository(
+            [
+                KnowledgeItem(
+                    id="delivery-1",
+                    title="Сроки",
+                    content="Отгрузка со склада.",
+                    category="delivery",
+                    tags=[],
+                )
+            ]
+        )
+    )
+
+    result = await service.search("delivery")
+
+    assert [item.id for item in result] == ["delivery-1"]

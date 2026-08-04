@@ -13,10 +13,15 @@ from app.contracts.logging_service import LoggingService
 from app.contracts.manager_queue_repository import ManagerQueueRepository
 from app.core.config import get_settings
 from app.core.constants import ChannelType
+from app.integrations.website.config import is_website_api_configured
 from app.knowledge_layer.knowledge_base_provider import KnowledgeBaseProvider
+from app.knowledge_layer.search_service import KnowledgeSearchService
 from app.knowledge_layer.source_selector import SourceSelector
+from app.knowledge_layer.website_provider import WebsiteKnowledgeProvider
 from app.prompt_builder import DefaultPromptBuilder
+from app.providers.website_provider import WebsiteApiProvider
 from app.repositories.conversations import SqlAlchemyConversationRepository
+from app.repositories.knowledge import SqlAlchemyKnowledgeRepository
 from app.repositories.manager_queue import SqlAlchemyManagerQueueRepository
 from app.repositories.sessions import SqlAlchemySessionRepository
 from app.services.conversation_state_service import ConversationStateService
@@ -48,7 +53,16 @@ def build_conversation_state() -> ConversationStateService:
 
 
 def build_source_selector(providers: list[KnowledgeProvider] | None = None) -> SourceSelector:
-    return SourceSelector(providers=providers or [KnowledgeBaseProvider.from_items([])])
+    if providers is not None:
+        return SourceSelector(providers=providers)
+
+    # Default: persisted knowledge + live Website API when WEBSITE_API_URL is set.
+    repo = SqlAlchemyKnowledgeRepository()
+    search_service = KnowledgeSearchService(repo)
+    selected: list[KnowledgeProvider] = [KnowledgeBaseProvider(search_service)]
+    if is_website_api_configured():
+        selected.append(WebsiteKnowledgeProvider(WebsiteApiProvider()))
+    return SourceSelector(providers=selected)
 
 
 def build_message_pipeline(

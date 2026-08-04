@@ -61,9 +61,10 @@ Required variables:
 - `CATALOG_API_URL` - future iwt.ru catalog REST API base URL.
 - `CATALOG_API_KEY` - future catalog API key.
 - `CATALOG_TIMEOUT` - catalog API timeout in seconds.
-- `WEBSITE_API_URL` - future website API base URL.
-- `WEBSITE_API_KEY` - future website API key.
+- `WEBSITE_API_URL` - website API base URL. When set, live `HttpWebsiteTransport` is used.
+- `WEBSITE_API_KEY` - website API key.
 - `WEBSITE_API_TIMEOUT` - website API timeout in seconds.
+- `WEBSITE_API_AUTH_MODE` - `bearer` (`Authorization: Bearer …`) or `api_key` (`X-API-Key`).
 
 ## Ubuntu 24.04 Deployment
 

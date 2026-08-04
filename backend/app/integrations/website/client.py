@@ -1,11 +1,13 @@
 from collections.abc import Mapping
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
 
 from pydantic import ValidationError
 
 from app.integrations.website.exceptions import (
+    WebsiteForbiddenError,
     WebsiteNotConfiguredError,
     WebsiteNotFoundError,
+    WebsiteRateLimitError,
     WebsiteServerError,
     WebsiteTimeoutError,
     WebsiteUnauthorizedError,
@@ -17,6 +19,7 @@ from app.integrations.website.schemas import (
     WebsiteProductDTO,
     WebsiteSearchResponseDTO,
 )
+from app.integrations.website.transport import AuthMode, HttpWebsiteTransport
 
 
 class WebsiteApiTransport(Protocol):
@@ -26,7 +29,7 @@ class WebsiteApiTransport(Protocol):
         path: str,
         params: Mapping[str, Any] | None = None,
     ) -> Any:
-        """Return raw JSON-compatible payload for a future website API."""
+        """Return raw JSON-compatible payload for website API."""
 
 
 class NotConfiguredWebsiteTransport:
@@ -37,24 +40,40 @@ class NotConfiguredWebsiteTransport:
         params: Mapping[str, Any] | None = None,
     ) -> Any:
         raise WebsiteNotConfiguredError(
-            "Website API transport is not configured. HTTP integration is reserved for a future sprint."
+            "Website API transport is not configured. Set WEBSITE_API_URL to enable HttpWebsiteTransport."
         )
 
 
 class WebsiteApiClient:
-    """API-ready website client without live HTTP calls in Sprint 4."""
+    """Website API client.
+
+    When base_url is provided and transport is omitted, uses live HttpWebsiteTransport.
+    Without base_url, keeps NotConfiguredWebsiteTransport (safe default for local/tests).
+    """
 
     def __init__(
         self,
         base_url: str = "",
         api_key: str = "",
         timeout: float = 10.0,
+        auth_mode: AuthMode | Literal["bearer", "api_key"] = "bearer",
         transport: WebsiteApiTransport | None = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
         self.timeout = timeout
-        self.transport = transport or NotConfiguredWebsiteTransport()
+        self.auth_mode: AuthMode = "api_key" if auth_mode == "api_key" else "bearer"
+        if transport is not None:
+            self.transport = transport
+        elif self.base_url:
+            self.transport = HttpWebsiteTransport(
+                base_url=self.base_url,
+                api_key=self.api_key,
+                timeout=self.timeout,
+                auth_mode=self.auth_mode,
+            )
+        else:
+            self.transport = NotConfiguredWebsiteTransport()
 
     async def search(self, query: str, limit: int = 10) -> WebsiteSearchResponseDTO:
         payload = await self._request("GET", "/search", params={"q": query, "limit": limit})
@@ -80,6 +99,11 @@ class WebsiteApiClient:
         payload = await self._request("GET", "/info/contacts")
         return self._validate(WebsiteContactInfoDTO, payload)
 
+    async def close(self) -> None:
+        close = getattr(self.transport, "close", None)
+        if close is not None:
+            await close()
+
     async def _request(
         self,
         method: str,
@@ -92,7 +116,9 @@ class WebsiteApiClient:
             WebsiteNotConfiguredError,
             WebsiteTimeoutError,
             WebsiteUnauthorizedError,
+            WebsiteForbiddenError,
             WebsiteNotFoundError,
+            WebsiteRateLimitError,
             WebsiteServerError,
             WebsiteUnavailableError,
         ):

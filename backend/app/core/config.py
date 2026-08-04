@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     website_api_url: str = ""
     website_api_key: str = ""
     website_api_timeout: float = 10.0
+    website_api_auth_mode: str = "bearer"
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

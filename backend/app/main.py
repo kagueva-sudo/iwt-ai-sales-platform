@@ -14,6 +14,7 @@ from app.api.whatsapp_webhook import router as whatsapp_webhook_router
 from app.core.config import get_settings
 from app.core.logging import configure_logging
 from app.db.init_db import init_db
+from app.services.knowledge_loader import default_knowledge_dir, seed_knowledge_from_dir
 
 
 settings = get_settings()
@@ -23,6 +24,8 @@ configure_logging(settings.log_level)
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     init_db()
+    # Optional seed: `knowledge/{faq,delivery,...}/*.json`.
+    await seed_knowledge_from_dir(default_knowledge_dir())
     yield
 
 

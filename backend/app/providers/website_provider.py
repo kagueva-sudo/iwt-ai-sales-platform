@@ -9,11 +9,13 @@ from app.domain.website import (
     WebsiteSourceError,
 )
 from app.integrations.website.client import WebsiteApiClient
-from app.integrations.website.config import get_website_config
+from app.integrations.website.config import build_website_api_client
 from app.integrations.website.exceptions import (
     WebsiteError,
+    WebsiteForbiddenError,
     WebsiteNotConfiguredError,
     WebsiteNotFoundError,
+    WebsiteRateLimitError,
     WebsiteServerError,
     WebsiteTimeoutError,
     WebsiteUnauthorizedError,
@@ -28,7 +30,7 @@ from app.integrations.website.schemas import (
 
 
 class WebsiteApiProvider(WebsiteProvider):
-    """Concrete WebsiteProvider implementation for future website API."""
+    """Concrete WebsiteProvider backed by Website API (live HttpWebsiteTransport when configured)."""
 
     provider_name = "website"
 
@@ -92,38 +94,35 @@ class WebsiteApiProvider(WebsiteProvider):
         return self._to_company_info(payload)
 
     def _build_client(self) -> WebsiteApiClient:
-        config = get_website_config()
-        return WebsiteApiClient(
-            base_url=str(config.api_url) if config.api_url else "",
-            api_key=config.api_key,
-            timeout=config.timeout,
-        )
+        return build_website_api_client()
 
     def _to_product(self, item: WebsiteProductDTO) -> Product:
+        fields_set = item.model_fields_set
         confirmed_fields: set[str] = {"sku", "name"}
-        if item.id:
+
+        if "id" in fields_set and item.id:
             confirmed_fields.add("id")
-        if item.description:
+        if "description" in fields_set and item.description:
             confirmed_fields.add("description")
-        if item.category_id:
+        if "category_id" in fields_set and item.category_id:
             confirmed_fields.add("category_id")
-        if item.category_name:
+        if "category_name" in fields_set and item.category_name:
             confirmed_fields.add("category_name")
-        if item.price is not None:
+        if "price" in fields_set and item.price is not None:
             confirmed_fields.add("price")
-        if item.currency:
+        if "currency" in fields_set and item.currency:
             confirmed_fields.add("currency")
-        if item.availability_status:
+        if "availability_status" in fields_set and item.availability_status:
             confirmed_fields.add("availability_status")
-        if item.stock_qty is not None:
+        if "stock_qty" in fields_set and item.stock_qty is not None:
             confirmed_fields.add("stock_qty")
-        if item.characteristics:
+        if "characteristics" in fields_set and item.characteristics:
             confirmed_fields.add("characteristics")
-        if item.delivery_terms:
+        if "delivery_terms" in fields_set and item.delivery_terms:
             confirmed_fields.add("delivery_terms")
-        if item.payment_terms:
+        if "payment_terms" in fields_set and item.payment_terms:
             confirmed_fields.add("payment_terms")
-        if item.warranty_terms:
+        if "warranty_terms" in fields_set and item.warranty_terms:
             confirmed_fields.add("warranty_terms")
 
         return Product(
@@ -147,10 +146,11 @@ class WebsiteApiProvider(WebsiteProvider):
         )
 
     def _to_category(self, item: WebsiteCategoryDTO) -> Category:
+        fields_set = item.model_fields_set
         confirmed_fields = {"id", "name"}
-        if item.description:
+        if "description" in fields_set and item.description:
             confirmed_fields.add("description")
-        if item.parent_id:
+        if "parent_id" in fields_set and item.parent_id:
             confirmed_fields.add("parent_id")
         return Category(
             id=item.id,
@@ -163,8 +163,9 @@ class WebsiteApiProvider(WebsiteProvider):
         )
 
     def _to_faq(self, item: WebsiteFAQItemDTO) -> FAQItem:
+        fields_set = item.model_fields_set
         confirmed_fields = {"id", "question", "answer"}
-        if item.topic:
+        if "topic" in fields_set and item.topic:
             confirmed_fields.add("topic")
         return FAQItem(
             id=item.id,
@@ -187,14 +188,15 @@ class WebsiteApiProvider(WebsiteProvider):
         )
 
     def _to_contacts(self, item: WebsiteContactInfoDTO) -> ContactInfo:
+        fields_set = item.model_fields_set
         confirmed_fields: set[str] = set()
-        if item.phone:
+        if "phone" in fields_set and item.phone:
             confirmed_fields.add("phone")
-        if item.email:
+        if "email" in fields_set and item.email:
             confirmed_fields.add("email")
-        if item.address:
+        if "address" in fields_set and item.address:
             confirmed_fields.add("address")
-        if item.working_hours:
+        if "working_hours" in fields_set and item.working_hours:
             confirmed_fields.add("working_hours")
         return ContactInfo(
             phone=item.phone,
@@ -216,6 +218,11 @@ class WebsiteApiProvider(WebsiteProvider):
             retryable = True
         elif isinstance(exc, WebsiteUnauthorizedError):
             code = "WEBSITE_API_UNAUTHORIZED"
+        elif isinstance(exc, WebsiteForbiddenError):
+            code = "WEBSITE_API_FORBIDDEN"
+        elif isinstance(exc, WebsiteRateLimitError):
+            code = "WEBSITE_API_RATE_LIMIT"
+            retryable = True
         elif isinstance(exc, WebsiteServerError):
             code = "WEBSITE_API_ERROR"
             retryable = True

@@ -3,32 +3,46 @@ from app.domain.knowledge import KnowledgeItem
 
 
 class KnowledgeSearchService:
-    """Simple local keyword search over Knowledge Base items.
+    """Local keyword search over Knowledge Base items.
 
-    Returns candidate items only. Never ranks or decides which source is better.
-    Source selection is the responsibility of SourceSelector.
+    Returns candidate items ordered by relevance (match count).
+    Does not decide which source is better across providers — that remains
+    SourceSelector responsibility.
 
-    No RAG, embeddings, or vector search in this foundation sprint.
+    No RAG, embeddings, or vector search.
     """
 
     def __init__(self, repository: KnowledgeRepository) -> None:
         self.repository = repository
 
     async def search(self, query: str) -> list[KnowledgeItem]:
-        normalized_query = query.strip().lower()
-        if not normalized_query:
+        words = self._tokenize(query)
+        if not words:
             return []
 
         items = await self.repository.list_all()
-        return [item for item in items if self._matches(item, normalized_query)]
+        scored: list[tuple[int, KnowledgeItem]] = []
+        for item in items:
+            score = self._score(item, words)
+            if score > 0:
+                scored.append((score, item))
 
-    def _matches(self, item: KnowledgeItem, normalized_query: str) -> bool:
-        if normalized_query in item.title.lower():
-            return True
-        if normalized_query in item.content.lower():
-            return True
-        if normalized_query in item.category.lower():
-            return True
-        if normalized_query in item.item_type.lower():
-            return True
-        return any(normalized_query in tag.lower() for tag in item.tags)
+        scored.sort(key=lambda pair: (-pair[0], pair[1].id))
+        return [item for _, item in scored]
+
+    def _tokenize(self, query: str) -> list[str]:
+        return [word for word in query.strip().lower().split() if word]
+
+    def _score(self, item: KnowledgeItem, words: list[str]) -> int:
+        fields = [
+            item.title.lower(),
+            item.content.lower(),
+            item.category.lower(),
+            *[tag.lower() for tag in item.tags],
+        ]
+        score = 0
+        for word in words:
+            for field in fields:
+                if word in field:
+                    score += 1
+        return score

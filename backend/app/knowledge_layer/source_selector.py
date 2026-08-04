@@ -6,7 +6,8 @@ class SourceSelector:
     """Select confirmed sources from provider candidates.
 
     KnowledgeSearchService and providers return candidates only.
-    Ranking beyond provider priority order is out of scope for this selector.
+    Intra-provider relevance order may come from KnowledgeSearchService;
+    cross-provider ranking remains out of scope for this selector.
     """
 
     def __init__(self, providers: list[KnowledgeProvider]) -> None:

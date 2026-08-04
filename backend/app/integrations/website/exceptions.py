@@ -11,15 +11,23 @@ class WebsiteTimeoutError(WebsiteError):
 
 
 class WebsiteUnauthorizedError(WebsiteError):
-    """Website API rejected credentials."""
+    """Website API rejected credentials (401)."""
+
+
+class WebsiteForbiddenError(WebsiteError):
+    """Website API denied access (403)."""
 
 
 class WebsiteNotFoundError(WebsiteError):
-    """Requested website entity was not found."""
+    """Requested website entity was not found (404)."""
+
+
+class WebsiteRateLimitError(WebsiteError):
+    """Website API rate limit exceeded (429)."""
 
 
 class WebsiteServerError(WebsiteError):
-    """Website API returned a server-side error."""
+    """Website API returned a server-side error (5xx)."""
 
 
 class WebsiteUnavailableError(WebsiteError):

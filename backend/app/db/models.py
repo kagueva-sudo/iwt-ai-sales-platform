@@ -125,3 +125,18 @@ class ProcessingLogModel(Base):
     request_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     details_json: Mapped[str] = mapped_column(Text, default="{}")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC), index=True)
+
+
+class KnowledgeItemModel(Base):
+    __tablename__ = "knowledge_items"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    title: Mapped[str] = mapped_column(Text)
+    content: Mapped[str] = mapped_column(Text)
+    category: Mapped[str] = mapped_column(String(64), index=True)
+    item_type: Mapped[str] = mapped_column(String(64), index=True)
+    tags_json: Mapped[str] = mapped_column(Text, default="[]")
+    source: Mapped[str] = mapped_column(String(64), index=True)
+    confirmed_fields_json: Mapped[str] = mapped_column(Text, default="[]")
+    metadata_json: Mapped[str] = mapped_column(Text, default="{}")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC), index=True)
