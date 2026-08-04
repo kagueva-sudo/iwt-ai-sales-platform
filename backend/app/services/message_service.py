@@ -1,67 +1,49 @@
-from app.ai_core.openai_provider import OpenAIProvider
-from app.ai_core.orchestrator import AISalesCore
-from app.ai_core.validator import AIValidator
-from app.core.config import get_settings
+from app.api.processing_mappers import map_processing_result_to_message
+from app.contracts.decision_router import DecisionRouter
 from app.db.session import SessionLocal
 from app.domain.customers import Customer
 from app.domain.messages import Message
-from app.providers.mock_providers import MockCRMProvider, MockCustomerProvider, MockProductProvider
-from app.repositories.ai_logs import AILogRepository
+from app.domain.processing import ProcessingResult
 from app.repositories.customers import CustomerRepository
-from app.repositories.errors import ErrorLogRepository
-from app.repositories.handoff import HandoffRepository
 from app.repositories.messages import MessageRepository
-from app.services.handoff_service import HandoffService
-
-
-def build_ai_core(handoff_repository: HandoffRepository | None = None) -> AISalesCore:
-    settings = get_settings()
-    crm_provider = MockCRMProvider()
-    return AISalesCore(
-        llm_provider=OpenAIProvider(settings.openai_api_key, settings.openai_model),
-        product_provider=MockProductProvider(),
-        customer_provider=MockCustomerProvider(),
-        handoff_service=HandoffService(crm_provider, handoff_repository),
-        validator=AIValidator(),
-    )
+from app.services.composition import build_decision_router, build_message_pipeline
+from app.services.message_pipeline import MessagePipelineService
 
 
 class MessageService:
-    def __init__(self, ai_core: AISalesCore | None = None) -> None:
-        self.ai_core = ai_core
+    """Gateway entry: Message → Freeze pipeline → DecisionRouter → outbound Message."""
+
+    def __init__(
+        self,
+        pipeline: MessagePipelineService | None = None,
+        decision_router: DecisionRouter | None = None,
+    ) -> None:
+        self.pipeline = pipeline or build_message_pipeline()
+        self.decision_router = decision_router or build_decision_router()
 
     async def process_message(self, message: Message) -> Message:
+        result = await self.process_to_result(message)
+        return map_processing_result_to_message(result, inbound=message)
+
+    async def process_to_result(self, message: Message) -> ProcessingResult:
         with SessionLocal() as session:
             message_repository = MessageRepository(session)
-            ai_log_repository = AILogRepository(session)
             customer_repository = CustomerRepository(session)
-            error_repository = ErrorLogRepository(session)
-            handoff_repository = HandoffRepository(session)
-            ai_core = self.ai_core or build_ai_core(handoff_repository)
 
             try:
-                customer_repository.get_or_create(Customer(id=message.customer_id, contact=message.customer_contact))
+                customer_repository.get_or_create(
+                    Customer(id=message.customer_id, contact=message.customer_contact)
+                )
                 message_repository.add(message)
                 session.flush()
 
-                result = await ai_core.process_message(message)
+                result = await self.pipeline.process(message)
+                await self.decision_router.route(result)
 
-                message_repository.add(result.outbound_message)
-                ai_log_repository.add(
-                    message_id=result.inbound_message.id,
-                    request_text=result.inbound_message.text,
-                    response_text=result.ai_response.text,
-                    validation_status=result.validation_result.status.value,
-                )
-                if result.error is not None:
-                    error_repository.add(
-                        message_id=result.inbound_message.id,
-                        error_type="ai_provider_error",
-                        error_message=result.error,
-                    )
-
+                outbound = map_processing_result_to_message(result, inbound=message)
+                message_repository.add(outbound)
                 session.commit()
-                return result.outbound_message
+                return result
             except Exception:
                 session.rollback()
                 raise

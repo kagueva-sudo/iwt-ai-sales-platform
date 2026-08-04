@@ -6,6 +6,8 @@ class ChannelType(StrEnum):
     WHATSAPP = "whatsapp"
     EMAIL = "email"
     WEBSITE = "website"
+    WEBSITE_FORM = "website_form"
+    WEBSITE_CHAT = "website_chat"
     INTERNAL = "internal"
 
 

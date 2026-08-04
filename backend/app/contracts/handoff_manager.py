@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
 
-from app.domain.handoff import HandoffCase
+from app.domain.processing import ProcessingResult
 
 
 class HandoffManager(ABC):
     @abstractmethod
-    async def create_handoff(self, handoff_case: HandoffCase) -> str:
-        """Create handoff case and return internal id."""
+    async def create_handoff(self, result: ProcessingResult) -> str:
+        """Create manager queue item from ProcessingResult and return request_id."""
