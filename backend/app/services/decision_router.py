@@ -48,6 +48,18 @@ class DefaultDecisionRouter(DecisionRouter):
             return
 
         if result.decision in (ProcessingDecision.HANDOFF, ProcessingDecision.NEEDS_MORE_DATA):
+            if result.response_text:
+                await self.response_sender.send(self._to_outbound_message(result))
+                await self.logging_service.log_audit(
+                    PipelineEventType.RESPONSE_SENT.value,
+                    {
+                        "request_id": result.request_id or "",
+                        "channel": (result.channel or ChannelType.INTERNAL).value,
+                        "response_text": result.response_text,
+                        "with_handoff": "true",
+                    },
+                    category="pipeline",
+                )
             handoff_id = await self.handoff_manager.create_handoff(result)
             await self.logging_service.log_audit(
                 PipelineEventType.HANDOFF.value,

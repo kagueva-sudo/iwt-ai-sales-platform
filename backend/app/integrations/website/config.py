@@ -9,15 +9,18 @@ class WebsiteConfig(BaseModel):
     api_url: AnyHttpUrl | None = None
     api_key: str = ""
     timeout: float = 10.0
-    auth_mode: AuthMode = "bearer"
+    auth_mode: AuthMode = "none"
+    catalog_iblock_id: int = 86
 
     @field_validator("auth_mode", mode="before")
     @classmethod
     def normalize_auth_mode(cls, value: object) -> str:
-        text = str(value or "bearer").strip().lower()
+        text = str(value or "none").strip().lower()
         if text in {"api_key", "apikey", "x-api-key"}:
             return "api_key"
-        return "bearer"
+        if text in {"bearer", "token"}:
+            return "bearer"
+        return "none"
 
 
 def get_website_config() -> WebsiteConfig:
@@ -27,6 +30,7 @@ def get_website_config() -> WebsiteConfig:
         api_key=settings.website_api_key,
         timeout=settings.website_api_timeout,
         auth_mode=settings.website_api_auth_mode,
+        catalog_iblock_id=settings.website_catalog_iblock_id,
     )
 
 
@@ -35,11 +39,12 @@ def is_website_api_configured() -> bool:
 
 
 def build_website_api_client() -> WebsiteApiClient:
-    """Build client with live HttpWebsiteTransport when WEBSITE_API_URL is set."""
+    """Build Bitrix webhook client when WEBSITE_API_URL is set."""
     config = get_website_config()
     return WebsiteApiClient(
         base_url=str(config.api_url) if config.api_url else "",
         api_key=config.api_key,
         timeout=config.timeout,
         auth_mode=config.auth_mode,
+        iblock_id=config.catalog_iblock_id,
     )

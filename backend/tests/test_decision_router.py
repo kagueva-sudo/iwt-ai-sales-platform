@@ -64,7 +64,8 @@ async def test_router_enqueues_handoff_and_logs() -> None:
     await router.route(_result(ProcessingDecision.HANDOFF))
 
     items = await queue.list_by_status(ManagerQueueStatus.NEW)
-    assert len(sender.sent) == 0
+    assert len(sender.sent) == 1
+    assert sender.sent[0].text == "Ответ"
     assert len(items) == 1
     item = items[0]
     assert item.request_id == "req-1"
@@ -84,7 +85,7 @@ async def test_router_enqueues_needs_more_data_as_handoff() -> None:
 
     await router.route(_result(ProcessingDecision.NEEDS_MORE_DATA))
 
-    assert len(sender.sent) == 0
+    assert len(sender.sent) == 1
     assert len(await queue.list_by_status(ManagerQueueStatus.NEW)) == 1
 
 

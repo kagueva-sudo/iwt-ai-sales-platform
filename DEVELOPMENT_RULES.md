@@ -35,7 +35,9 @@
 - пустой `confirmed_fields` не является подтверждением данных;
 - наличие поля в объекте не означает, что поле подтверждено;
 - AI Validator и проверки подтверждения используют только явный список `confirmed_fields`;
-- каждый новый provider обязан заполнять `confirmed_fields` при маппинге в domain-модель.
+- каждый новый provider обязан заполнять `confirmed_fields` при маппинге в domain-модель;
+- цена с Bitrix подтверждается только из `catalog.price.list` (`"price"` в `confirmed_fields`);
+- если клиент спрашивает цену, а `"price"` не подтверждена — Validator → `NEEDS_DATA` → handoff менеджеру.
 
 ## Knowledge Search Responsibility
 
@@ -44,6 +46,12 @@
 Он только возвращает кандидатов.
 
 Выбор делает `SourceSelector`.
+
+## Data Source Split (Bitrix vs Knowledge Base)
+
+- Bitrix: товар, цена, наличие, характеристики.
+- Knowledge Base: оплата, доставка, гарантия, компания, FAQ.
+- Delivery / payment / warranty **не** хранятся и не читаются из Bitrix.
 
 ## Architecture Freeze v2.1
 

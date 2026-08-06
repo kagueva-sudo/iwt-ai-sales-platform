@@ -1,5 +1,85 @@
 # Project Memory
 
+## 2026-08-06 — MAX channel (Sprint 16)
+
+Статус: принято.
+
+Два режима деплоя:
+
+| Режим | Вход | Исходящие ответы |
+|-------|------|------------------|
+| Прямой webhook | MAX → `POST /channels/max/webhook` (Python) | Python `HttpMaxTransport` (`MAX_BOT_TOKEN`) |
+| Go bridge | MAX polling → `bot_iwt_max/cmd/platform-bridge` → Python webhook | Python при `PLATFORM_SENDS_REPLIES=true` (default); иначе Go sender |
+
+Компоненты Python:
+
+- `MaxChannelAdapter` — normalize simplified + native MAX payload, route cache `user_id`/`chat_id`
+- `integrations/max/transport.py` — `POST /messages` с `Authorization: <token>`
+- `channel_adapters/max_payload.py` — парсинг `message_created`, skip `message_callback`
+
+Standalone Go-бот (каталог JSON, FSM, SQLite-заявки) — deprecated в пользу AI pipeline + Manager Queue.
+
+Callbacks в bridge только ACK, в AI pipeline не идут.
+
+## 2026-08-04 — Website Live API = Bitrix REST webhook
+
+Статус: принято.
+
+Источник товарных данных для Website Provider:
+
+- Base URL: `https://iwt.ru/rest/1/<webhook>/`
+- Auth: токен в пути URL (`WEBSITE_API_AUTH_MODE=none`)
+- Каталог товаров: `iblockId=86` (`WEBSITE_CATALOG_IBLOCK_ID`)
+
+Идентификаторы товара:
+
+- `code` → `Product.sku` (основной внешний id / артикул)
+- `xmlId` → 1С обмен (хранится в characteristics, участвует в поиске)
+- `id` → внутренний Bitrix id (`Product.id`)
+
+Поиск клиента резолвится по: name (`%name`), code, xmlId, Bitrix id.
+
+Цена: отдельный метод `catalog.price.list` (в `catalog.product.get` цены нет).
+Цена попадает в `confirmed_fields` только если пришла из price.list.
+
+Правило озвучивания цены (обязательное):
+
+- Если цена получена из `catalog.price.list` → поле `price` в `confirmed_fields` →
+  AI Validator **разрешает** озвучивать цену клиенту.
+- Если цена не пришла → `price` **не** подтверждена →
+  Validator возвращает `NEEDS_DATA` → Decision Router создаёт handoff менеджеру.
+- Выдуманная или «угаданная» цена без `confirmed_fields` запрещена.
+
+## 2026-08-04 — Источники данных: Bitrix vs Knowledge Base
+
+Статус: принято.
+
+Разделение ответственности (не хранить delivery/payment/warranty в Bitrix):
+
+| Данные | Источник |
+|--------|----------|
+| Товар | Bitrix (`catalog.product.*`) |
+| Цена | Bitrix (`catalog.price.list`) |
+| Наличие | Bitrix (`available` / `quantity`) |
+| Характеристики | Bitrix (product properties) |
+| Оплата | Knowledge Base |
+| Доставка | Knowledge Base |
+| Гарантия | Knowledge Base |
+| Компания | Knowledge Base |
+| FAQ | Knowledge Base |
+
+Причины:
+
+- менеджеры меняют тексты без программистов;
+- не нужно менять Bitrix под контент;
+- удобно расширять инструкции / FAQ / гарантии.
+
+Реализация:
+
+- `SourceSelector` агрегирует Knowledge Base + Website/Bitrix provider;
+- Bitrix client не отдаёт delivery/payment/warranty/contacts (NotFound → пусто у WebsiteProvider);
+- контент оплаты/доставки/гарантии/FAQ берётся только из Knowledge Base.
+
 ## 2026-08-03 — Architecture Freeze v2.1
 
 Статус: принято.

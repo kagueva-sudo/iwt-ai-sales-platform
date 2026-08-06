@@ -1,5 +1,5 @@
 import asyncio
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Any, Literal
 
 import httpx
@@ -14,13 +14,15 @@ from app.integrations.website.exceptions import (
     WebsiteUnavailableError,
 )
 
-AuthMode = Literal["bearer", "api_key"]
+AuthMode = Literal["bearer", "api_key", "none"]
+RequestParams = Mapping[str, Any] | Sequence[tuple[str, Any]] | None
 
 
 class HttpWebsiteTransport:
-    """Live HTTP transport for Website API (httpx).
+    """Live HTTP transport for Website / Bitrix webhook API (httpx).
 
     Auth modes:
+    - none: webhook token is already in base_url (Bitrix inbound webhook)
     - bearer: Authorization: Bearer <api_key>
     - api_key: X-API-Key: <api_key>
     """
@@ -34,13 +36,13 @@ class HttpWebsiteTransport:
         timeout: float = 10.0,
         max_retries: int = 2,
         retry_backoff_seconds: float = 0.05,
-        auth_mode: AuthMode = "bearer",
+        auth_mode: AuthMode = "none",
         http_client: httpx.AsyncClient | None = None,
     ) -> None:
         if not base_url.strip():
             raise ValueError("HttpWebsiteTransport requires a non-empty base_url.")
-        if auth_mode not in ("bearer", "api_key"):
-            raise ValueError("HttpWebsiteTransport auth_mode must be 'bearer' or 'api_key'.")
+        if auth_mode not in ("bearer", "api_key", "none"):
+            raise ValueError("HttpWebsiteTransport auth_mode must be 'bearer', 'api_key', or 'none'.")
 
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
@@ -58,7 +60,7 @@ class HttpWebsiteTransport:
         self,
         method: str,
         path: str,
-        params: Mapping[str, Any] | None = None,
+        params: RequestParams = None,
     ) -> Any:
         last_error: Exception | None = None
         for attempt in range(self.max_retries + 1):
@@ -81,7 +83,7 @@ class HttpWebsiteTransport:
         self,
         method: str,
         path: str,
-        params: Mapping[str, Any] | None,
+        params: RequestParams,
     ) -> Any:
         try:
             response = await self.http_client.request(
@@ -120,7 +122,7 @@ class HttpWebsiteTransport:
 
     def _headers(self) -> dict[str, str]:
         headers = {"Accept": "application/json"}
-        if not self.api_key:
+        if not self.api_key or self.auth_mode == "none":
             return headers
         if self.auth_mode == "api_key":
             headers["X-API-Key"] = self.api_key

@@ -1,7 +1,7 @@
-"""Website API integration layer.
+"""Website / Bitrix catalog integration.
 
-Live HTTP is enabled when WEBSITE_API_URL is set: WebsiteApiClient then uses
-HttpWebsiteTransport with Bearer or X-API-Key auth.
+Set WEBSITE_API_URL to the Bitrix webhook base (`https://iwt.ru/rest/1/<code>`).
+Auth mode `none`: token is part of the URL path.
 """
 
 from app.integrations.website.client import NotConfiguredWebsiteTransport, WebsiteApiClient

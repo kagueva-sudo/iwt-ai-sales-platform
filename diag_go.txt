@@ -1,0 +1,5 @@
+=== LOOK FOR GO BRIDGE ===
+=== SSH config? ===
+no_ssh_config
+=== docker? ===
+DONE

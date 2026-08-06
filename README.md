@@ -20,7 +20,7 @@ Backend foundation for the commercial AI Sales Platform.
 - Message queues
 - RBAC / SSO
 - Admin Panel
-- Real integrations with 1C, Bitrix24, MAX, WhatsApp, or Email
+- Real integrations with 1C, Bitrix24, WhatsApp, or Email (MAX — см. ниже)
 - Advanced monitoring infrastructure
 
 ## Local Run
@@ -61,10 +61,26 @@ Required variables:
 - `CATALOG_API_URL` - future iwt.ru catalog REST API base URL.
 - `CATALOG_API_KEY` - future catalog API key.
 - `CATALOG_TIMEOUT` - catalog API timeout in seconds.
-- `WEBSITE_API_URL` - website API base URL. When set, live `HttpWebsiteTransport` is used.
-- `WEBSITE_API_KEY` - website API key.
+- `WEBSITE_API_URL` - Bitrix inbound webhook base, e.g. `https://iwt.ru/rest/1/<webhook>`.
+- `WEBSITE_API_KEY` - unused for Bitrix webhook auth (token is in the URL).
 - `WEBSITE_API_TIMEOUT` - website API timeout in seconds.
-- `WEBSITE_API_AUTH_MODE` - `bearer` (`Authorization: Bearer …`) or `api_key` (`X-API-Key`).
+- `WEBSITE_API_AUTH_MODE` - `none` for Bitrix webhook; also supports `bearer` / `api_key`.
+- `WEBSITE_CATALOG_IBLOCK_ID` - Bitrix catalog iblock id (default `86` for Товары 1С).
+- `MAX_BOT_TOKEN` - MAX bot token for outbound messages via MAX API.
+- `MAX_API_BASE_URL` - MAX API base URL (default `https://platform-api2.max.ru`).
+- `MAX_API_TIMEOUT` - MAX API timeout in seconds.
+
+### MAX channel
+
+Webhook endpoint: `POST /channels/max/webhook`
+
+Два режима деплоя:
+
+1. **Прямой** — MAX шлёт webhook на Python API; задайте `MAX_BOT_TOKEN` в `.env`.
+2. **Через Go bridge** — polling в `bot_iwt_max/cmd/platform-bridge` форвардит события в Python;
+   при `PLATFORM_SENDS_REPLIES=true` ответы отправляет Python (нужен `MAX_BOT_TOKEN` на стороне платформы).
+
+Товары/цены — Bitrix (`WEBSITE_API_URL`), FAQ/доставка/оплата — Knowledge Base.
 
 ## Ubuntu 24.04 Deployment
 

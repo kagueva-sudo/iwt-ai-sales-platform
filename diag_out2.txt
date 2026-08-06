@@ -1,0 +1,7 @@
+=== WEBHOOK ===
+STATUS: 200
+handoff: 
+text_len: 147
+keys: text,validation_status,sources,handoff_required,reason
+body: {"text":"ÐÐ½Ðµ Ð½ÑÐ¶Ð½Ð¾ ÑÑÐ¾ÑÐ½Ð¸ÑÑ ÑÑÑ Ð¸Ð½ÑÐ¾ÑÐ¼Ð°ÑÐ¸Ñ Ñ ÑÐ¿ÐµÑÐ¸Ð°Ð»Ð¸ÑÑÐ°. Ð¯ Ð¿ÐµÑÐµÐ´Ð°Ð¼ Ð²Ð°Ñ Ð·Ð°Ð¿ÑÐ¾Ñ Ð¼ÐµÐ½ÐµÐ´Ð¶ÐµÑÑ.","validation_status":"handoff_required","sources":[],"handoff_required":true,"reason":"no_verified_sources"}
+DONE

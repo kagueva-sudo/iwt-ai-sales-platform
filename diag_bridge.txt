@@ -1,0 +1,7 @@
+=== BRIDGE PROCS ===
+PID=30084 PARENT=27336 NAME=go.exe
+CMD="C:\Program Files\Go\bin\go.exe" run ./cmd/platform-bridge
+PID=37776 PARENT=30084 NAME=platform-bridge.exe
+CMD=C:\Users\gulya\AppData\Local\go-build\3d\3ded60d7dd96b4b5b005656b95efb619d3857f6531cf9c8f159c1bc430ea3180-d\platform-bridge.exe
+GetProcess id=30084 path=C:\Program Files\Go\bin\go.exe
+GetProcess id=37776 path=C:\Users\gulya\AppData\Local\go-build\3d\3ded60d7dd96b4b5b005656b95efb619d3857f6531cf9c8f159c1bc430ea3180-d\platform-bridge.exe

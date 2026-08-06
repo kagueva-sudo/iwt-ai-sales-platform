@@ -21,7 +21,13 @@ class Settings(BaseSettings):
     website_api_url: str = ""
     website_api_key: str = ""
     website_api_timeout: float = 10.0
-    website_api_auth_mode: str = "bearer"
+    website_api_auth_mode: str = "none"
+    website_catalog_iblock_id: int = 86
+
+    max_bot_token: str = ""
+    max_api_base_url: str = "https://platform-api2.max.ru"
+    max_api_timeout: float = 10.0
+    max_tls_insecure: bool = False
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 

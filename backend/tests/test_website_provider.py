@@ -9,57 +9,94 @@ from app.domain.ai import AIResponse
 from app.domain.products import ProductSearchResult
 from app.integrations.website.client import WebsiteApiClient
 from app.integrations.website.exceptions import WebsiteNotConfiguredError, WebsiteUnavailableError
+from app.integrations.website.schemas import WebsiteProductDTO, WebsiteSearchResponseDTO
 from app.providers.website_provider import WebsiteApiProvider
 
 
 pytestmark = pytest.mark.asyncio
 
 
-class FakeWebsiteTransport:
-    def __init__(self, payload: Any = None, error: Exception | None = None) -> None:
-        self.payload = payload
+class StubWebsiteClient:
+    def __init__(
+        self,
+        search_result: WebsiteSearchResponseDTO | None = None,
+        product: WebsiteProductDTO | None = None,
+        error: Exception | None = None,
+    ) -> None:
+        self.search_result = search_result or WebsiteSearchResponseDTO()
+        self.product = product
         self.error = error
 
-    async def request(self, method: str, path: str, params: dict[str, Any] | None = None) -> Any:
+    async def search(self, query: str, limit: int = 10) -> WebsiteSearchResponseDTO:
         if self.error is not None:
             raise self.error
-        return self.payload
+        return self.search_result
+
+    async def get_product_by_sku(self, sku: str) -> WebsiteProductDTO:
+        if self.error is not None:
+            raise self.error
+        if self.product is None:
+            from app.integrations.website.exceptions import WebsiteNotFoundError
+
+            raise WebsiteNotFoundError("missing")
+        return self.product
+
+    async def get_delivery_info(self) -> Any:
+        from app.integrations.website.exceptions import WebsiteNotFoundError
+
+        raise WebsiteNotFoundError("n/a")
+
+    async def get_payment_info(self) -> Any:
+        from app.integrations.website.exceptions import WebsiteNotFoundError
+
+        raise WebsiteNotFoundError("n/a")
+
+    async def get_warranty_info(self) -> Any:
+        from app.integrations.website.exceptions import WebsiteNotFoundError
+
+        raise WebsiteNotFoundError("n/a")
+
+    async def get_contacts(self) -> Any:
+        from app.integrations.website.exceptions import WebsiteNotFoundError
+
+        raise WebsiteNotFoundError("n/a")
 
 
 async def test_website_provider_returns_confirmed_product_data() -> None:
-    client = WebsiteApiClient(
-        transport=FakeWebsiteTransport(
-            payload={
-                "products": [
+    client = StubWebsiteClient(
+        search_result=WebsiteSearchResponseDTO(
+            products=[
+                WebsiteProductDTO.model_validate(
                     {
-                        "id": "1",
-                        "sku": "P-1",
+                        "id": "112415",
+                        "sku": "disk-hpe-600",
                         "name": "Насос",
                         "description": "Описание насоса",
                         "price": 1000,
+                        "currency": "RUB",
                         "stock_qty": 5,
                         "characteristics": {"power": "1 kW"},
                         "delivery_terms": "2 дня",
                     }
-                ]
-            }
+                )
+            ]
         )
     )
-    provider = WebsiteApiProvider(client=client)
+    provider = WebsiteApiProvider(client=client)  # type: ignore[arg-type]
 
     result = await provider.search("насос")
 
     assert result.confirmed is True
     assert len(result.products) == 1
     product = result.products[0]
+    assert product.sku == "disk-hpe-600"
     assert "price" in product.confirmed_fields
     assert "stock_qty" in product.confirmed_fields
     assert product.source == "website"
 
 
 async def test_website_provider_returns_empty_result_when_no_data() -> None:
-    client = WebsiteApiClient(transport=FakeWebsiteTransport(payload={"products": []}))
-    provider = WebsiteApiProvider(client=client)
+    provider = WebsiteApiProvider(client=StubWebsiteClient())  # type: ignore[arg-type]
 
     result = await provider.search("несуществующий товар")
 
@@ -69,20 +106,20 @@ async def test_website_provider_returns_empty_result_when_no_data() -> None:
 
 
 async def test_website_provider_marks_incomplete_product_without_price_confirmation() -> None:
-    client = WebsiteApiClient(
-        transport=FakeWebsiteTransport(
-            payload={
-                "products": [
+    client = StubWebsiteClient(
+        search_result=WebsiteSearchResponseDTO(
+            products=[
+                WebsiteProductDTO.model_validate(
                     {
                         "sku": "P-1",
                         "name": "Насос",
                         "description": "Описание",
                     }
-                ]
-            }
+                )
+            ]
         )
     )
-    provider = WebsiteApiProvider(client=client)
+    provider = WebsiteApiProvider(client=client)  # type: ignore[arg-type]
 
     result = await provider.search("насос")
     product = result.products[0]
@@ -97,8 +134,9 @@ async def test_website_provider_marks_incomplete_product_without_price_confirmat
 
 
 async def test_website_provider_handles_unavailable_source() -> None:
-    client = WebsiteApiClient(transport=FakeWebsiteTransport(error=WebsiteUnavailableError("down")))
-    provider = WebsiteApiProvider(client=client)
+    provider = WebsiteApiProvider(
+        client=StubWebsiteClient(error=WebsiteUnavailableError("down"))  # type: ignore[arg-type]
+    )
 
     result = await provider.search("насос")
 
@@ -116,25 +154,11 @@ async def test_website_provider_handles_not_configured_transport() -> None:
     assert result.errors[0].code == "WEBSITE_API_NOT_CONFIGURED"
 
 
-async def test_website_provider_returns_company_and_contact_info() -> None:
-    delivery_client = WebsiteApiClient(
-        transport=FakeWebsiteTransport(
-            payload={"topic": "delivery", "title": "Доставка", "content": "Доставка 2 дня"}
-        )
-    )
-    contacts_client = WebsiteApiClient(
-        transport=FakeWebsiteTransport(
-            payload={"phone": "+7-000", "email": "info@iwt.ru", "address": "Москва"}
-        )
-    )
+async def test_website_provider_returns_none_for_missing_company_info() -> None:
+    provider = WebsiteApiProvider(client=StubWebsiteClient())  # type: ignore[arg-type]
 
-    delivery = await WebsiteApiProvider(client=delivery_client).get_delivery_info()
-    contacts = await WebsiteApiProvider(client=contacts_client).get_contacts()
-
-    assert delivery is not None
-    assert "content" in delivery.confirmed_fields
-    assert contacts is not None
-    assert "email" in contacts.confirmed_fields
+    assert await provider.get_delivery_info() is None
+    assert await provider.get_contacts() is None
 
 
 async def test_default_client_raises_not_configured_without_transport() -> None:

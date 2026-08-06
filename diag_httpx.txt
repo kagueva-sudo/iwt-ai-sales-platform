@@ -1,0 +1,4 @@
+TOKEN_SET=True TOKEN_LEN=84
+httpx_verify_False_status=200
+httpx_verify_True_error=ConnectError
+HttpMaxTransport_import=OK

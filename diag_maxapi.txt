@@ -1,0 +1,7 @@
+=== CURL MAX /me (backend token) ===
+HTTP_STATUS_ME: 200
+CURL_EXIT: 0
+=== CURL MAX /updates ===
+HTTP_STATUS_UPDATES: 200
+CURL_EXIT: 0
+DONE

@@ -1,0 +1,7 @@
+=== BACKEND .env ===
+OPENAI_API_KEY: SET=True starts_sk=True len=164
+MAX_BOT_TOKEN: SET=True len=84
+MAX_BOT_TOKEN_FINGERPRINT16: A8E845017DB1BE14
+=== GO .env search ===
+FOUND: C:\Users\gulya\OneDrive\Документы\iwt-ai-sales-platform\.env
+DIR: backend
