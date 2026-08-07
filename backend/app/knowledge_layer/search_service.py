@@ -92,9 +92,17 @@ class KnowledgeSearchService:
         return score
 
     def _matches(self, field: str, word: str) -> bool:
-        if word in field:
+        tokens = _WORD_RE.findall(field)
+        if any(token == word for token in tokens):
             return True
-        # Light Russian morphology: "оплатить" ~ "оплата", "доставляете" ~ "доставка".
-        if len(word) >= 4 and word[:4] in field:
-            return True
+        # Short words: exact token only (avoids "день" → "деньги").
+        if len(word) < 5:
+            return False
+        stem_len = 5
+        stem = word[:stem_len]
+        for token in tokens:
+            if token.startswith(stem) or (
+                len(token) >= stem_len and stem.startswith(token[:stem_len])
+            ):
+                return True
         return False

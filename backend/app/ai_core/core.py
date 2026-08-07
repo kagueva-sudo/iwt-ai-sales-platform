@@ -1,5 +1,5 @@
 from app.ai_core.llm_provider import LLMProvider
-from app.ai_core.prompts import GREETING_MESSAGE, SAFE_HANDOFF_MESSAGE
+from app.ai_core.prompts import GREETING_MESSAGE, SAFE_HANDOFF_MESSAGE, STOCK_PRICE_GUIDANCE_MESSAGE
 from app.ai_core.validator import FACT_TO_CONFIRMED_FIELDS, AIValidator
 from app.core.constants import AIValidationStatus, HandoffReason
 from app.core.errors import ProviderError
@@ -38,13 +38,22 @@ class AICore:
         source_ids = [source.source_id for source in prompt_context.verified_sources]
         requested_facts = self._detect_requested_commercial_facts(prompt_context.user_message)
 
+        # Pure greetings must not fall through to KB (e.g. "день" → "деньги"/оплата).
+        if self._is_conversational_open(prompt_context.user_message) and not requested_facts:
+            return ProcessingResult(
+                decision=ProcessingDecision.RESPOND,
+                response_text=GREETING_MESSAGE,
+                sources=[],
+                metadata={"reason": "conversational_greeting"},
+            )
+
         if not prompt_context.verified_sources:
-            if self._is_conversational_open(prompt_context.user_message) and not requested_facts:
+            if requested_facts and requested_facts <= {"price", "stock"}:
                 return ProcessingResult(
                     decision=ProcessingDecision.RESPOND,
-                    response_text=GREETING_MESSAGE,
+                    response_text=STOCK_PRICE_GUIDANCE_MESSAGE,
                     sources=[],
-                    metadata={"reason": "conversational_greeting"},
+                    metadata={"reason": "stock_price_guidance"},
                 )
             return ProcessingResult(
                 decision=ProcessingDecision.HANDOFF,
@@ -52,6 +61,18 @@ class AICore:
                 handoff_reason=HandoffReason.NO_CONFIRMED_DATA,
                 sources=[],
                 metadata={"reason": "no_verified_sources"},
+            )
+
+        if (
+            requested_facts
+            and requested_facts <= {"price", "stock"}
+            and not self._sources_cover_facts(prompt_context.verified_sources, requested_facts)
+        ):
+            return ProcessingResult(
+                decision=ProcessingDecision.RESPOND,
+                response_text=self._stock_price_guidance_answer(prompt_context.verified_sources),
+                sources=source_ids,
+                metadata={"reason": "stock_price_guidance"},
             )
 
         try:
@@ -206,20 +227,59 @@ class AICore:
         )
         return any(marker in lowered for marker in markers)
 
+    def _stock_price_guidance_answer(self, sources: list[VerifiedSource]) -> str:
+        for source in sources:
+            haystack = f"{source.source_id} {source.title}".lower()
+            if "stock-price" in haystack or "наличие" in haystack or "цена" in haystack:
+                content = source.content.strip()
+                if content:
+                    return content
+        return STOCK_PRICE_GUIDANCE_MESSAGE
+
+    def _is_sunday_query(self, text: str) -> bool:
+        lowered = text.lower()
+        return "воскрес" in lowered
+
+    def _is_lunch_query(self, text: str) -> bool:
+        lowered = text.lower()
+        return "обед" in lowered or "перерыв" in lowered
+
     def _pick_best_source(
         self,
         sources: list[VerifiedSource],
         user_message: str,
     ) -> VerifiedSource:
+        if self._is_sunday_query(user_message):
+            for source in sources:
+                haystack = f"{source.source_id} {source.title} {source.content}".lower()
+                if "sunday" in haystack or "hours-sunday" in haystack or (
+                    "воскрес" in haystack and "нет" in source.content.lower()
+                ):
+                    return source
+        if self._is_lunch_query(user_message):
+            for source in sources:
+                haystack = f"{source.source_id} {source.title} {source.content}".lower()
+                if "lunch" in haystack or "hours-lunch" in haystack or "без перерыва" in haystack:
+                    return source
         if self._is_hours_query(user_message) and not self._is_location_query(user_message):
             for source in sources:
                 haystack = f"{source.source_id} {source.title}".lower()
-                if "hours" in haystack or "режим" in haystack or "час" in haystack:
+                if (
+                    "hours-full" in haystack
+                    or "hours" in haystack
+                    or "режим" in haystack
+                    or "working_hours" in haystack
+                ):
                     return source
         if self._is_location_query(user_message):
             for source in sources:
                 haystack = f"{source.source_id} {source.title} {source.content[:200]}".lower()
-                if "shops" in haystack or "пункт" in haystack or "магазин" in haystack or "забрать" in haystack:
+                if (
+                    "shops" in haystack
+                    or "company-shops" in haystack
+                    or "пункт" in haystack
+                    or "забрать" in haystack
+                ):
                     return source
         return sources[0]
 
@@ -228,13 +288,7 @@ class AICore:
         sources: list[VerifiedSource],
         user_message: str = "",
     ) -> str:
-        # One best-matching source avoids dumping duplicate FAQ articles.
+        # Reply with answer content only — titles are often FAQ questions.
         source = self._pick_best_source(sources, user_message)
-        title = source.title.strip()
         content = source.content.strip()
-        if title and content:
-            # Avoid "Title\nTitle ..." when content already starts with the title.
-            if content.lower().startswith(title.lower()):
-                return content
-            return f"{title}\n{content}"
         return content or SAFE_HANDOFF_MESSAGE

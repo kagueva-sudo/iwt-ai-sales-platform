@@ -87,6 +87,27 @@ async def test_pipeline_responds_with_confirmed_sources() -> None:
     assert result.metadata["dialog_id"]
 
 
+async def test_pipeline_stock_question_gives_site_guidance() -> None:
+    from app.ai_core.prompts import STOCK_PRICE_GUIDANCE_MESSAGE
+
+    pipeline = _build_pipeline(StubLLMProvider(), sources=[])
+    message = Message(
+        text="У вас есть в наличии ноутбуки?",
+        channel=ChannelType.MAX,
+        direction=MessageDirection.INBOUND,
+        customer_id="c-1",
+    )
+
+    result = await pipeline.process(message)
+
+    assert result.decision == ProcessingDecision.RESPOND
+    assert result.response_text == STOCK_PRICE_GUIDANCE_MESSAGE
+    assert "iwt.ru" in (result.response_text or "")
+    assert "56-06-06" in (result.response_text or "")
+    assert "903 477-00-88" in (result.response_text or "")
+    assert "info@iwt.ru" in (result.response_text or "")
+
+
 async def test_pipeline_greets_on_hello_without_sources() -> None:
     from app.ai_core.prompts import GREETING_MESSAGE
 
@@ -102,6 +123,32 @@ async def test_pipeline_greets_on_hello_without_sources() -> None:
 
     assert result.decision == ProcessingDecision.RESPOND
     assert result.response_text == GREETING_MESSAGE
+    assert result.metadata.get("reason") == "conversational_greeting"
+
+
+async def test_pipeline_greets_despite_unrelated_kb_sources() -> None:
+    from app.ai_core.prompts import GREETING_MESSAGE
+
+    payment = VerifiedSource(
+        source_id="payment-overview",
+        source_type="knowledge_base",
+        title="Способы оплаты",
+        content="Способы оплаты IWT.ru: вернуть деньги на карту.",
+        metadata={"confirmed_fields": "content,payment_terms"},
+    )
+    pipeline = _build_pipeline(FailingLLMProvider(), sources=[payment])
+    message = Message(
+        text="добрый день",
+        channel=ChannelType.MAX,
+        direction=MessageDirection.INBOUND,
+        customer_id="c-1",
+    )
+
+    result = await pipeline.process(message)
+
+    assert result.decision == ProcessingDecision.RESPOND
+    assert result.response_text == GREETING_MESSAGE
+    assert "Способы оплаты" not in (result.response_text or "")
     assert result.metadata.get("reason") == "conversational_greeting"
 
 
@@ -123,10 +170,27 @@ async def test_pipeline_greets_on_start_without_sources() -> None:
     assert result.response_text == GREETING_MESSAGE
 
 
-async def test_pipeline_handoff_without_sources() -> None:
+async def test_pipeline_price_without_sources_gives_site_guidance() -> None:
+    from app.ai_core.prompts import STOCK_PRICE_GUIDANCE_MESSAGE
+
     pipeline = _build_pipeline(StubLLMProvider(), sources=[])
     message = Message(
         text="Какая цена насоса?",
+        channel=ChannelType.MAX,
+        direction=MessageDirection.INBOUND,
+    )
+
+    result = await pipeline.process(message)
+
+    assert result.decision == ProcessingDecision.RESPOND
+    assert result.response_text == STOCK_PRICE_GUIDANCE_MESSAGE
+    assert result.metadata.get("reason") == "stock_price_guidance"
+
+
+async def test_pipeline_handoff_without_sources_for_non_stock_price() -> None:
+    pipeline = _build_pipeline(StubLLMProvider(), sources=[])
+    message = Message(
+        text="Какая мощность насоса?",
         channel=ChannelType.MAX,
         direction=MessageDirection.INBOUND,
     )
@@ -137,7 +201,9 @@ async def test_pipeline_handoff_without_sources() -> None:
     assert result.handoff_reason == HandoffReason.NO_CONFIRMED_DATA
 
 
-async def test_pipeline_needs_more_data_when_price_not_confirmed() -> None:
+async def test_pipeline_price_guidance_when_price_not_confirmed() -> None:
+    from app.ai_core.prompts import STOCK_PRICE_GUIDANCE_MESSAGE
+
     pipeline = _build_pipeline(StubLLMProvider(), sources=[_price_source(confirmed_price=False)])
     message = Message(
         text="Какая цена насоса?",
@@ -147,8 +213,9 @@ async def test_pipeline_needs_more_data_when_price_not_confirmed() -> None:
 
     result = await pipeline.process(message)
 
-    assert result.decision == ProcessingDecision.NEEDS_MORE_DATA
-    assert "price" in result.metadata.get("reason", "")
+    assert result.decision == ProcessingDecision.RESPOND
+    assert result.response_text == STOCK_PRICE_GUIDANCE_MESSAGE
+    assert result.metadata.get("reason") == "stock_price_guidance"
 
 
 async def test_pipeline_falls_back_to_kb_when_llm_fails() -> None:
@@ -177,7 +244,7 @@ async def test_pipeline_falls_back_to_kb_when_llm_fails() -> None:
 async def test_ai_core_returns_error_on_llm_failure_without_covering_sources() -> None:
     pipeline = _build_pipeline(FailingLLMProvider(), sources=[_price_source(confirmed_price=False)])
     message = Message(
-        text="Какая цена насоса?",
+        text="Какая мощность насоса?",
         channel=ChannelType.MAX,
         direction=MessageDirection.INBOUND,
     )

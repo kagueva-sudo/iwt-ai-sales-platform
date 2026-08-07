@@ -1,0 +1,29 @@
+[
+  {
+    "id": "hours-full",
+    "title": "Режим работы магазинов IWT",
+    "item_type": "faq",
+    "tags": ["режим работы", "часы работы", "график", "работаете", "открыты", "завтра", "сегодня"],
+    "source": "https://www.iwt.ru/contacts/",
+    "confirmed_fields": ["id", "title", "content", "category", "item_type", "tags"],
+    "content": "Режим работы IWT:\n\nМахачкала, ул. Азиза Алиева, 17А:\nПн–Пт 9:00–19:00, Сб 10:00–17:00, Вс — выходной.\n\nКаспийск, ул. Ленина, д. 6:\nПн–Сб 9:00–19:00, Вс — выходной.\n\nКорпоративный отдел:\nПн–Пт 9:00–19:00, Сб 10:00–17:00."
+  },
+  {
+    "id": "hours-sunday",
+    "title": "Работаете ли вы в воскресенье?",
+    "item_type": "faq",
+    "tags": ["воскресенье", "выходной", "работаете", "открыты"],
+    "source": "FAQ ИВТ.docx",
+    "confirmed_fields": ["id", "title", "content", "category", "item_type", "tags"],
+    "content": "Нет. В воскресенье магазины IWT не работают — это выходной."
+  },
+  {
+    "id": "hours-lunch",
+    "title": "Есть ли перерыв на обед?",
+    "item_type": "faq",
+    "tags": ["обед", "перерыв", "перерыв на обед", "обеденный", "без перерыва"],
+    "source": "FAQ ИВТ.docx",
+    "confirmed_fields": ["id", "title", "content", "category", "item_type", "tags"],
+    "content": "Работаем без перерыва на обед."
+  }
+]

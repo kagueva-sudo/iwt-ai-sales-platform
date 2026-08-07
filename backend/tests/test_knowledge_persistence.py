@@ -40,6 +40,31 @@ async def test_sqlalchemy_knowledge_repository_add_and_get(tmp_path: Path) -> No
     assert "content" in loaded.confirmed_fields
 
 
+def test_load_knowledge_items_from_domain_file(tmp_path: Path) -> None:
+    root = tmp_path / "knowledge"
+    root.mkdir()
+    (root / "delivery.json").write_text(
+        json.dumps(
+            [
+                {
+                    "id": "delivery-courier",
+                    "title": "Курьер",
+                    "content": "Доставка от 300 руб.",
+                    "tags": ["доставка"],
+                }
+            ],
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+    items = load_knowledge_items_from_dir(root)
+    assert len(items) == 1
+    assert items[0].id == "delivery-courier"
+    assert items[0].category == "delivery"
+    assert items[0].title == "Курьер"
+
+
 def test_load_knowledge_items_from_dir_maps_category_from_folder(tmp_path: Path) -> None:
     root = tmp_path / "knowledge"
     (root / "delivery").mkdir(parents=True)

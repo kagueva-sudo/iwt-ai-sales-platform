@@ -109,7 +109,7 @@ def test_website_form_webhook_handoff() -> None:
         response = client.post(
             "/channels/website/form",
             json={
-                "message": "Сколько стоит насос?",
+                "message": "Какая мощность насоса?",
                 "email": "client@example.com",
                 "form_id": "form-1",
             },
@@ -126,7 +126,7 @@ def test_website_chat_webhook_handoff() -> None:
         response = client.post(
             "/channels/website/chat",
             json={
-                "text": "Сколько стоит насос?",
+                "text": "Какая мощность насоса?",
                 "visitor_id": "v-1",
                 "contact": "+79991112233",
             },
@@ -172,7 +172,9 @@ async def test_website_channels_approved_response() -> None:
 
 
 @pytest.mark.asyncio
-async def test_website_channels_handoff_without_sources() -> None:
+async def test_website_channels_price_guidance_without_sources() -> None:
+    from app.ai_core.prompts import STOCK_PRICE_GUIDANCE_MESSAGE
+
     pipeline = _build_pipeline(sources=[])
     message = await WebsiteChatAdapter().normalize_incoming(
         {"text": "Какая цена насоса?", "visitor_id": "v-2"}
@@ -180,7 +182,8 @@ async def test_website_channels_handoff_without_sources() -> None:
 
     result = await pipeline.process(message)
 
-    assert result.decision == ProcessingDecision.HANDOFF
+    assert result.decision == ProcessingDecision.RESPOND
+    assert result.response_text == STOCK_PRICE_GUIDANCE_MESSAGE
 
 
 def test_ai_core_does_not_know_website_channels() -> None:

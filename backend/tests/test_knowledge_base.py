@@ -92,6 +92,54 @@ async def test_knowledge_search_is_case_insensitive() -> None:
     assert [item.id for item in result] == ["faq-delivery"]
 
 
+async def test_knowledge_search_prefers_sunday_faq() -> None:
+    items = [
+        KnowledgeItem(
+            id="contacts-hours",
+            title="Режим работы магазинов IWT",
+            content="Махачкала: Пн–Пт 9:00–19:00, Вс — выходной.",
+            category="contacts",
+            tags=["режим работы", "работаете"],
+        ),
+        KnowledgeItem(
+            id="hours-sunday",
+            title="Работаете ли вы в воскресенье?",
+            content="Нет. В воскресенье магазины IWT не работают — это выходной.",
+            category="working_hours",
+            tags=["воскресенье", "выходной", "работаете"],
+        ),
+    ]
+    service = KnowledgeSearchService(InMemoryKnowledgeRepository(items))
+
+    result = await service.search("Вы работаете в воскресенье?")
+
+    assert result[0].id == "hours-sunday"
+
+
+async def test_knowledge_search_prefers_lunch_faq() -> None:
+    items = [
+        KnowledgeItem(
+            id="faq-pc-selection",
+            title="Помощь с выбором компьютера и ноутбука",
+            content="Какая периферия уже есть.",
+            category="faq",
+            tags=["подбор", "компьютер"],
+        ),
+        KnowledgeItem(
+            id="hours-lunch",
+            title="Есть ли перерыв на обед?",
+            content="Работаем без перерыва на обед.",
+            category="working_hours",
+            tags=["обед", "перерыв"],
+        ),
+    ]
+    service = KnowledgeSearchService(InMemoryKnowledgeRepository(items))
+
+    result = await service.search("Какой у вас перерыв на обед?")
+
+    assert result[0].id == "hours-lunch"
+
+
 async def test_knowledge_search_prefers_hours_article_for_schedule_query() -> None:
     items = [
         KnowledgeItem(
@@ -102,10 +150,10 @@ async def test_knowledge_search_prefers_hours_article_for_schedule_query() -> No
             tags=["контакты", "телефон"],
         ),
         KnowledgeItem(
-            id="contacts-hours",
+            id="hours-full",
             title="Режим работы магазинов IWT",
             content="Махачкала: Пн–Пт 9:00–19:00, Вс — выходной.",
-            category="contacts",
+            category="working_hours",
             tags=["режим работы", "работаете", "завтра"],
         ),
     ]
@@ -113,7 +161,7 @@ async def test_knowledge_search_prefers_hours_article_for_schedule_query() -> No
 
     result = await service.search("Вы работаете завтра?")
 
-    assert result[0].id == "contacts-hours"
+    assert result[0].id == "hours-full"
 
 
 async def test_knowledge_search_ignores_punctuation_and_stopwords() -> None:
@@ -181,3 +229,20 @@ async def test_knowledge_search_matches_category() -> None:
     result = await service.search("delivery")
 
     assert [item.id for item in result] == ["delivery-1"]
+
+
+async def test_knowledge_search_does_not_match_den_to_dengi() -> None:
+    items = [
+        KnowledgeItem(
+            id="payment-overview",
+            title="Способы оплаты",
+            content="Можно вернуть деньги на карту.",
+            category="payment",
+            tags=["оплата"],
+        )
+    ]
+    service = KnowledgeSearchService(InMemoryKnowledgeRepository(items))
+
+    result = await service.search("добрый день")
+
+    assert result == []
