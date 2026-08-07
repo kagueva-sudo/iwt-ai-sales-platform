@@ -119,8 +119,10 @@ def is_max_processable_update(payload: dict[str, object]) -> bool:
     update_type = first_str(payload, ("update_type", "type", "event"))
     if update_type:
         normalized = update_type.lower()
-        if normalized in {"message_callback", "bot_started"}:
+        if normalized == "message_callback":
             return False
+        if normalized == "bot_started":
+            return extract_max_text(payload) is not None
         if normalized not in {"message_created", "message"}:
             return False
     return extract_max_text(payload) is not None

@@ -70,6 +70,20 @@ async def test_max_adapter_normalizes_native_max_payload() -> None:
     assert message.id == "mid-42"
 
 
+async def test_max_adapter_normalizes_bot_started_as_start() -> None:
+    payload = {
+        "update_type": "bot_started",
+        "user_id": 4242,
+        "chat_id": 9001,
+        "text": "/start",
+        "sender": {"user_id": 4242, "username": "ivan"},
+    }
+    assert is_max_processable_update(payload)
+    message = await MaxChannelAdapter().normalize_incoming(payload)
+    assert message.text == "/start"
+    assert message.customer_id == "4242"
+
+
 async def test_max_adapter_skips_callback_updates() -> None:
     with pytest.raises(ProviderError):
         await MaxChannelAdapter().normalize_incoming(
@@ -84,7 +98,8 @@ async def test_max_adapter_rejects_empty_payload() -> None:
         await adapter.normalize_incoming({"user_id": "1"})
 
 
-async def test_max_adapter_stub_send_without_token() -> None:
+async def test_max_adapter_stub_send_without_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("app.channel_adapters.max_adapter.is_max_configured", lambda: False)
     adapter = MaxChannelAdapter()
     outbound = Message(
         text="Ответ",

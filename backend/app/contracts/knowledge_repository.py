@@ -15,3 +15,7 @@ class KnowledgeRepository(ABC):
     @abstractmethod
     async def add(self, item: KnowledgeItem) -> KnowledgeItem:
         """Persist a knowledge item locally."""
+
+    @abstractmethod
+    async def delete(self, item_id: str) -> None:
+        """Delete a knowledge item by id if it exists."""

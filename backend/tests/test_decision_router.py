@@ -89,7 +89,7 @@ async def test_router_enqueues_needs_more_data_as_handoff() -> None:
     assert len(await queue.list_by_status(ManagerQueueStatus.NEW)) == 1
 
 
-async def test_router_logs_error_without_send_or_handoff() -> None:
+async def test_router_logs_error_and_sends_safe_text() -> None:
     router, sender, queue, logging_service = _build_router()
 
     await router.route(
@@ -100,7 +100,8 @@ async def test_router_logs_error_without_send_or_handoff() -> None:
         )
     )
 
-    assert sender.sent == []
+    assert len(sender.sent) == 1
+    assert sender.sent[0].text == "Ответ"
     assert await queue.list_by_status(ManagerQueueStatus.NEW) == []
     assert any(record.category == "ai" for record in logging_service.records)
     assert any(record.category == "error" for record in logging_service.records)

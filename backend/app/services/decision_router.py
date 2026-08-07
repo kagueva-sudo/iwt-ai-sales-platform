@@ -74,6 +74,18 @@ class DefaultDecisionRouter(DecisionRouter):
             return
 
         if result.decision == ProcessingDecision.ERROR:
+            if result.response_text:
+                await self.response_sender.send(self._to_outbound_message(result))
+                await self.logging_service.log_audit(
+                    PipelineEventType.RESPONSE_SENT.value,
+                    {
+                        "request_id": result.request_id or "",
+                        "channel": (result.channel or ChannelType.INTERNAL).value,
+                        "response_text": result.response_text,
+                        "with_error": "true",
+                    },
+                    category="pipeline",
+                )
             await self.logging_service.log_error(result)
 
     def _to_outbound_message(self, result: ProcessingResult) -> Message:

@@ -62,11 +62,12 @@ def test_load_knowledge_items_from_dir_maps_category_from_folder(tmp_path: Path)
 
 
 @pytest.mark.asyncio
-async def test_seed_knowledge_from_dir_seeds_only_when_empty(tmp_path: Path) -> None:
+async def test_seed_knowledge_from_dir_upserts_on_each_run(tmp_path: Path) -> None:
     db_repo = SqlAlchemyKnowledgeRepository(session_factory=_session_factory(tmp_path / "seed.db"))
     root = tmp_path / "knowledge"
     (root / "faq").mkdir(parents=True)
-    (root / "faq" / "faq-1.json").write_text(
+    faq_path = root / "faq" / "faq-1.json"
+    faq_path.write_text(
         json.dumps(
             {
                 "title": "Гарантия",
@@ -78,11 +79,21 @@ async def test_seed_knowledge_from_dir_seeds_only_when_empty(tmp_path: Path) -> 
     )
 
     inserted_first = await seed_knowledge_from_dir(root, repository=db_repo)
+    faq_path.write_text(
+        json.dumps(
+            {
+                "title": "Гарантия",
+                "content": "Гарантия 24 месяца.",
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
     inserted_second = await seed_knowledge_from_dir(root, repository=db_repo)
 
     assert inserted_first == 1
-    assert inserted_second == 0
+    assert inserted_second == 1
     loaded = await db_repo.get_by_id("faq-1")
     assert loaded is not None
-    assert loaded.content == "Гарантия 12 месяцев."
+    assert loaded.content == "Гарантия 24 месяца."
 

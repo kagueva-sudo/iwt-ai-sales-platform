@@ -1,5 +1,45 @@
+import re
+
 from app.contracts.knowledge_repository import KnowledgeRepository
 from app.domain.knowledge import KnowledgeItem
+
+
+_WORD_RE = re.compile(r"[0-9a-zа-яё]+", re.IGNORECASE)
+_STOPWORDS = {
+    "а",
+    "и",
+    "в",
+    "на",
+    "по",
+    "с",
+    "у",
+    "о",
+    "к",
+    "из",
+    "от",
+    "до",
+    "за",
+    "для",
+    "при",
+    "или",
+    "как",
+    "что",
+    "это",
+    "же",
+    "ли",
+    "бы",
+    "не",
+    "ни",
+    "вы",
+    "мы",
+    "я",
+    "он",
+    "она",
+    "они",
+    "the",
+    "a",
+    "an",
+}
 
 
 class KnowledgeSearchService:
@@ -31,18 +71,30 @@ class KnowledgeSearchService:
         return [item for _, item in scored]
 
     def _tokenize(self, query: str) -> list[str]:
-        return [word for word in query.strip().lower().split() if word]
+        words = _WORD_RE.findall(query.lower())
+        return [word for word in words if len(word) > 1 and word not in _STOPWORDS]
 
     def _score(self, item: KnowledgeItem, words: list[str]) -> int:
-        fields = [
-            item.title.lower(),
-            item.content.lower(),
-            item.category.lower(),
-            *[tag.lower() for tag in item.tags],
-        ]
+        title = item.title.lower()
+        tags = " ".join(tag.lower() for tag in item.tags)
+        category = item.category.lower()
+        content = item.content.lower()
         score = 0
         for word in words:
-            for field in fields:
-                if word in field:
-                    score += 1
+            if self._matches(title, word):
+                score += 5
+            if self._matches(tags, word):
+                score += 4
+            if self._matches(category, word):
+                score += 2
+            if self._matches(content, word):
+                score += 1
         return score
+
+    def _matches(self, field: str, word: str) -> bool:
+        if word in field:
+            return True
+        # Light Russian morphology: "оплатить" ~ "оплата", "доставляете" ~ "доставка".
+        if len(word) >= 4 and word[:4] in field:
+            return True
+        return False

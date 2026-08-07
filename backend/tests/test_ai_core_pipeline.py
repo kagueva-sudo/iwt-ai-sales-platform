@@ -87,6 +87,42 @@ async def test_pipeline_responds_with_confirmed_sources() -> None:
     assert result.metadata["dialog_id"]
 
 
+async def test_pipeline_greets_on_hello_without_sources() -> None:
+    from app.ai_core.prompts import GREETING_MESSAGE
+
+    pipeline = _build_pipeline(StubLLMProvider(), sources=[])
+    message = Message(
+        text="Привет",
+        channel=ChannelType.MAX,
+        direction=MessageDirection.INBOUND,
+        customer_id="c-1",
+    )
+
+    result = await pipeline.process(message)
+
+    assert result.decision == ProcessingDecision.RESPOND
+    assert result.response_text == GREETING_MESSAGE
+    assert result.metadata.get("reason") == "conversational_greeting"
+
+
+async def test_pipeline_greets_on_start_without_sources() -> None:
+    from app.ai_core.prompts import GREETING_MESSAGE
+
+    pipeline = _build_pipeline(StubLLMProvider(), sources=[])
+    message = Message(
+        text="/start",
+        channel=ChannelType.MAX,
+        direction=MessageDirection.INBOUND,
+        customer_id="c-1",
+    )
+
+    result = await pipeline.process(message)
+
+    assert result.decision == ProcessingDecision.RESPOND
+    assert "IWT.ru" in (result.response_text or "")
+    assert result.response_text == GREETING_MESSAGE
+
+
 async def test_pipeline_handoff_without_sources() -> None:
     pipeline = _build_pipeline(StubLLMProvider(), sources=[])
     message = Message(
@@ -115,8 +151,31 @@ async def test_pipeline_needs_more_data_when_price_not_confirmed() -> None:
     assert "price" in result.metadata.get("reason", "")
 
 
-async def test_ai_core_returns_error_on_llm_failure() -> None:
-    pipeline = _build_pipeline(FailingLLMProvider(), sources=[_price_source(confirmed_price=True)])
+async def test_pipeline_falls_back_to_kb_when_llm_fails() -> None:
+    source = VerifiedSource(
+        source_id="delivery-1",
+        source_type="knowledge_base",
+        title="Доставка",
+        content="Бесплатная доставка от 5000 рублей.",
+        metadata={"confirmed_fields": "content,delivery_terms"},
+    )
+    pipeline = _build_pipeline(FailingLLMProvider(), sources=[source])
+    message = Message(
+        text="Доставка платная?",
+        channel=ChannelType.MAX,
+        direction=MessageDirection.INBOUND,
+        customer_id="c-1",
+    )
+
+    result = await pipeline.process(message)
+
+    assert result.decision == ProcessingDecision.RESPOND
+    assert "Бесплатная доставка" in (result.response_text or "")
+    assert result.metadata.get("reason") == "llm_fallback_kb"
+
+
+async def test_ai_core_returns_error_on_llm_failure_without_covering_sources() -> None:
+    pipeline = _build_pipeline(FailingLLMProvider(), sources=[_price_source(confirmed_price=False)])
     message = Message(
         text="Какая цена насоса?",
         channel=ChannelType.MAX,

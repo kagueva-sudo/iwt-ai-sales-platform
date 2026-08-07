@@ -9,6 +9,8 @@ FACT_TO_CONFIRMED_FIELDS: dict[str, set[str]] = {
     "stock": {"stock_qty", "availability_status"},
     "characteristics": {"characteristics", "description"},
     "delivery_terms": {"delivery_terms"},
+    "payment_terms": {"payment_terms"},
+    "warranty_terms": {"warranty_terms"},
 }
 
 
@@ -90,10 +92,12 @@ class AIValidator:
     def _detect_commercial_facts(self, text: str) -> set[str]:
         lowered = text.lower()
         fact_keywords = {
-            "price": ("цена", "стоимость", "руб", "₽", "р."),
+            "price": ("цена", "стоимость", "прайс"),
             "stock": ("налич", "остат", "склад"),
             "characteristics": ("характерист", "мощность", "размер", "габарит", "описание"),
             "delivery_terms": ("срок", "поставка", "доставка", "когда будет"),
+            "payment_terms": ("оплат", "платеж", "наличн", "карт", "сбербанк"),
+            "warranty_terms": ("гарант", "возврат", "обмен", "сервис", "недостат", "претенз"),
         }
         return {
             fact

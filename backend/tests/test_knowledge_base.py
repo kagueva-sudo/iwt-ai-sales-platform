@@ -92,6 +92,38 @@ async def test_knowledge_search_is_case_insensitive() -> None:
     assert [item.id for item in result] == ["faq-delivery"]
 
 
+async def test_knowledge_search_prefers_hours_article_for_schedule_query() -> None:
+    items = [
+        KnowledgeItem(
+            id="contacts-overview",
+            title="Контакты IWT.ru",
+            content="Email и телефоны магазина.",
+            category="contacts",
+            tags=["контакты", "телефон"],
+        ),
+        KnowledgeItem(
+            id="contacts-hours",
+            title="Режим работы магазинов IWT",
+            content="Махачкала: Пн–Пт 9:00–19:00, Вс — выходной.",
+            category="contacts",
+            tags=["режим работы", "работаете", "завтра"],
+        ),
+    ]
+    service = KnowledgeSearchService(InMemoryKnowledgeRepository(items))
+
+    result = await service.search("Вы работаете завтра?")
+
+    assert result[0].id == "contacts-hours"
+
+
+async def test_knowledge_search_ignores_punctuation_and_stopwords() -> None:
+    service = KnowledgeSearchService(InMemoryKnowledgeRepository(_sample_items()))
+
+    result = await service.search("Как оплатить?")
+
+    assert [item.id for item in result] == ["rule-payment"]
+
+
 async def test_knowledge_search_supports_multi_word_query() -> None:
     service = KnowledgeSearchService(InMemoryKnowledgeRepository(_sample_items()))
 

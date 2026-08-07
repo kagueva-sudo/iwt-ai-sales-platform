@@ -1,0 +1,1 @@
+{"text":"Мне нужно уточнить эту информацию у специалиста. Я передам ваш запрос менеджеру.","validation_status":"handoff_required","sources":["delivery-courier","delivery-overview","delivery-regions","delivery-pickup"],"handoff_required":true,"reason":"llm_error"}

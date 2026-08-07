@@ -73,21 +73,23 @@ async def seed_knowledge_from_dir(
 ) -> int:
     """Seed persisted knowledge from filesystem.
 
-    Inserts/updates items (upsert by id) via repository.add().
-    Seeds only when DB is empty to avoid duplicates.
+    Upserts all items from JSON files by id and removes DB items
+    that are no longer present in the knowledge directory.
     """
     repo = repository or SqlAlchemyKnowledgeRepository()
-    existing = await repo.list_all()
-    if existing:
-        return 0
-
     items = load_knowledge_items_from_dir(root_dir)
-    inserted = 0
+    loaded_ids = {item.id for item in items}
+    upserted = 0
     for item in items:
         stored = await repo.add(item)
         if stored is not None:
-            inserted += 1
-    return inserted
+            upserted += 1
+
+    for existing in await repo.list_all():
+        if existing.id not in loaded_ids:
+            await repo.delete(existing.id)
+
+    return upserted
 
 
 def default_knowledge_dir() -> Path:

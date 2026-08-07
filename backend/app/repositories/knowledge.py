@@ -31,6 +31,9 @@ class InMemoryKnowledgeRepository(KnowledgeRepository):
         self._items[stored.id] = stored
         return stored
 
+    async def delete(self, item_id: str) -> None:
+        self._items.pop(item_id, None)
+
 
 class SqlAlchemyKnowledgeRepository(KnowledgeRepository):
     """Persist KnowledgeItem in DB.
@@ -71,6 +74,13 @@ class SqlAlchemyKnowledgeRepository(KnowledgeRepository):
             session.add(model)
             session.commit()
             return stored
+
+    async def delete(self, item_id: str) -> None:
+        with self._session_factory() as session:
+            existing = session.get(KnowledgeItemModel, item_id)
+            if existing is not None:
+                session.delete(existing)
+                session.commit()
 
     def _to_domain(self, row: KnowledgeItemModel) -> KnowledgeItem:
         def _loads_json(value: str, default: Any) -> Any:

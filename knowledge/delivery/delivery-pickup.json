@@ -1,0 +1,21 @@
+{
+  "id": "delivery-pickup",
+  "title": "Самовывоз",
+  "category": "delivery",
+  "item_type": "faq",
+  "tags": ["самовывоз", "доставка", "магазин", "бронь"],
+  "source": "https://www.iwt.ru/delivery/",
+  "confirmed_fields": [
+    "id",
+    "title",
+    "content",
+    "category",
+    "item_type",
+    "tags",
+    "delivery_terms"
+  ],
+  "metadata": {
+    "source_url": "https://www.iwt.ru/delivery/"
+  },
+  "content": "Самовывоз IWT.ru (https://www.iwt.ru/delivery/ и https://www.iwt.ru/shops/):\n\nЗаказанный на сайте товар можно забрать в магазине в удобное время.\nПункты выдачи: Махачкала, ул. Азиза Алиева, 17А; Каспийск, ул. Ленина, д. 6.\nЗабронированный товар ожидает покупателя в течение двух рабочих дней.\nАдреса, телефоны и режим работы магазинов — на https://www.iwt.ru/shops/."
+}

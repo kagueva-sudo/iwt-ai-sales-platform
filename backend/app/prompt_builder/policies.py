@@ -23,6 +23,13 @@ DEFAULT_RESPONSE_CONSTRAINTS = [
         description="Respond in Russian by default.",
     ),
     ResponseConstraint(
+        code="greet_on_open",
+        description=(
+            "At conversation start or when the client greets you, begin with a polite greeting "
+            "and a short introduction as the IWT.ru assistant."
+        ),
+    ),
+    ResponseConstraint(
         code="no_unverified_commercial_facts",
         description="Do not state commercial facts that are not confirmed in verified sources.",
     ),
