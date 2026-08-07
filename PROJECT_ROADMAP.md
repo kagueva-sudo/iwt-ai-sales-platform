@@ -3,8 +3,8 @@
 | Поле | Значение |
 |------|----------|
 | Архитектура | Architecture Freeze v2.2 |
-| Текущая позиция | Sprint 16 завершён → далее Sprint 17 |
-| Обновлено | 2026-08-06 |
+| Текущая позиция | Sprint 17 завершён → далее Sprint 18 |
+| Обновлено | 2026-08-07 |
 
 Связанные документы: `PROJECT_SPEC.md`, `DEVELOPMENT_RULES.md`, `PROJECT_MEMORY.md`, `ACCEPTANCE_CRITERIA.md`, `README.md`.
 
@@ -46,7 +46,7 @@
 
 ✔ Sprint 16 MAX
 
-⬜ Sprint 17 WhatsApp
+✔ Sprint 17 WhatsApp
 
 ⬜ Sprint 18 Email
 
@@ -115,7 +115,7 @@ Channels → Adapters → Gateway → ConversationState → SourceSelector
 |--------|----------|-------|--------|
 | 15 | Website Live API | Live HttpWebsiteTransport, auth, search/products, confirmed_fields | ✔ |
 | 16 | MAX | Production-подключение канала MAX | ✔ |
-| 17 | WhatsApp | Production-подключение WhatsApp | ⬜ |
+| 17 | WhatsApp | Production-подключение WhatsApp | ✔ |
 | 18 | Email | Production-подключение Email | ⬜ |
 | 19 | Prompt Optimization | Улучшение Prompt Builder / политик без смены архитектуры | ⬜ |
 | 20 | Knowledge UI | UI для управления Knowledge Base | ⬜ |

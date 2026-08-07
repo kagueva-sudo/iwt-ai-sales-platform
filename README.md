@@ -20,7 +20,7 @@ Backend foundation for the commercial AI Sales Platform.
 - Message queues
 - RBAC / SSO
 - Admin Panel
-- Real integrations with 1C, Bitrix24, WhatsApp, or Email (MAX — см. ниже)
+- Real integrations with 1C, Bitrix24, or Email (MAX и WhatsApp — см. ниже)
 - Advanced monitoring infrastructure
 
 ## Local Run
@@ -69,6 +69,10 @@ Required variables:
 - `MAX_BOT_TOKEN` - MAX bot token for outbound messages via MAX API.
 - `MAX_API_BASE_URL` - MAX API base URL (default `https://platform-api2.max.ru`).
 - `MAX_API_TIMEOUT` - MAX API timeout in seconds.
+- `WHATSAPP_ACCESS_TOKEN` - Meta WhatsApp Cloud API access token.
+- `WHATSAPP_PHONE_NUMBER_ID` - WhatsApp phone number id for outbound sends.
+- `WHATSAPP_VERIFY_TOKEN` - token for Meta webhook verification (`GET /channels/whatsapp/webhook`).
+- `WHATSAPP_API_VERSION` - Graph API version (default `v21.0`).
 
 ### MAX channel
 
@@ -81,6 +85,16 @@ Webhook endpoint: `POST /channels/max/webhook`
    при `PLATFORM_SENDS_REPLIES=true` ответы отправляет Python (нужен `MAX_BOT_TOKEN` на стороне платформы).
 
 Товары/цены — Bitrix (`WEBSITE_API_URL`), FAQ/доставка/оплата — Knowledge Base.
+
+### WhatsApp channel
+
+Endpoints:
+
+- `GET /channels/whatsapp/webhook` — Meta verify handshake (`WHATSAPP_VERIFY_TOKEN`)
+- `POST /channels/whatsapp/webhook` — inbound Cloud API / simplified payloads
+
+Задайте `WHATSAPP_ACCESS_TOKEN` и `WHATSAPP_PHONE_NUMBER_ID` для исходящих ответов через Graph API.
+Status callbacks без текста принимаются как `EVENT_RECEIVED` без запуска pipeline.
 
 ## Ubuntu 24.04 Deployment
 

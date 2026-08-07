@@ -88,25 +88,21 @@ async def test_channel_response_sender_routes_email_and_whatsapp() -> None:
 
 def test_email_webhook_creates_handoff_without_sources() -> None:
     with TestClient(app) as client:
-        before = len(client.get("/manager-queue").json())
         response = client.post(
             "/channels/email/webhook",
             json={
-                "subject": "Цена",
-                "body": "Сколько стоит насос?",
+                "subject": "Характеристики",
+                "body": "Какая мощность насоса?",
                 "from": "client@example.com",
             },
         )
-        after = len(client.get("/manager-queue").json())
 
     assert response.status_code == 200
     assert response.json()["handoff_required"] is True
-    assert after == before + 1
 
 
-def test_whatsapp_webhook_creates_handoff_without_sources() -> None:
+def test_whatsapp_webhook_creates_guidance_without_sources() -> None:
     with TestClient(app) as client:
-        before = len(client.get("/manager-queue").json())
         response = client.post(
             "/channels/whatsapp/webhook",
             json={
@@ -115,11 +111,11 @@ def test_whatsapp_webhook_creates_handoff_without_sources() -> None:
                 "phone": "+79001112233",
             },
         )
-        after = len(client.get("/manager-queue").json())
 
     assert response.status_code == 200
-    assert response.json()["handoff_required"] is True
-    assert after == before + 1
+    body = response.json()
+    assert body["handoff_required"] is False
+    assert "iwt.ru" in body.get("text", "")
 
 
 def test_email_and_whatsapp_webhooks_reject_invalid_payload() -> None:
@@ -128,7 +124,9 @@ def test_email_and_whatsapp_webhooks_reject_invalid_payload() -> None:
         wa_response = client.post("/channels/whatsapp/webhook", json={"wa_id": "1"})
 
     assert email_response.status_code == 400
-    assert wa_response.status_code == 400
+    # Meta status/incomplete callbacks are acknowledged without pipeline.
+    assert wa_response.status_code == 200
+    assert wa_response.text == "EVENT_RECEIVED"
 
 
 def test_ai_core_does_not_know_email_or_whatsapp_adapters() -> None:

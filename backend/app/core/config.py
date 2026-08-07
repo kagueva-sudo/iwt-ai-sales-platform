@@ -29,6 +29,13 @@ class Settings(BaseSettings):
     max_api_timeout: float = 10.0
     max_tls_insecure: bool = False
 
+    whatsapp_access_token: str = ""
+    whatsapp_phone_number_id: str = ""
+    whatsapp_verify_token: str = ""
+    whatsapp_api_base_url: str = "https://graph.facebook.com"
+    whatsapp_api_version: str = "v21.0"
+    whatsapp_api_timeout: float = 10.0
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
 

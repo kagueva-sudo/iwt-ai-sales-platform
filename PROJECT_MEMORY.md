@@ -1,5 +1,24 @@
 # Project Memory
 
+## 2026-08-07 — WhatsApp channel (Sprint 17)
+
+Статус: принято.
+
+Production-подключение Meta WhatsApp Cloud API по тому же паттерну, что MAX:
+
+| Режим | Вход | Исходящие |
+|-------|------|-----------|
+| Webhook | Meta → `GET/POST /channels/whatsapp/webhook` | `HttpWhatsAppTransport` при `WHATSAPP_ACCESS_TOKEN` + `WHATSAPP_PHONE_NUMBER_ID` |
+
+Компоненты:
+
+- `WhatsAppChannelAdapter` — simplified + Cloud API payload, route cache `wa_id`
+- `integrations/whatsapp/transport.py` — `POST /{version}/{phone_number_id}/messages`
+- `channel_adapters/whatsapp_payload.py` — text messages; status callbacks игнорируются (`EVENT_RECEIVED`)
+- `GET /channels/whatsapp/webhook` — verify handshake (`WHATSAPP_VERIFY_TOKEN`)
+
+AI Core не знает о WhatsApp. Без credentials outbound остаётся stub (как раньше).
+
 ## 2026-08-06 — MAX channel (Sprint 16)
 
 Статус: принято.
