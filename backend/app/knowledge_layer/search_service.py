@@ -71,7 +71,14 @@ class KnowledgeSearchService:
         return [item for _, item in scored]
 
     def _tokenize(self, query: str) -> list[str]:
-        words = _WORD_RE.findall(query.lower())
+        normalized = (
+            query.lower()
+            .replace("б/у", " бу ")
+            .replace("б\\у", " бу ")
+            .replace("trade-in", " tradein ")
+            .replace("трейд-ин", " трейдин ")
+        )
+        words = _WORD_RE.findall(normalized)
         return [word for word in words if len(word) > 1 and word not in _STOPWORDS]
 
     def _score(self, item: KnowledgeItem, words: list[str]) -> int:

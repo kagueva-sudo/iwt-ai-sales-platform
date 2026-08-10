@@ -1,5 +1,12 @@
+import re
+
 from app.ai_core.llm_provider import LLMProvider
-from app.ai_core.prompts import GREETING_MESSAGE, SAFE_HANDOFF_MESSAGE, STOCK_PRICE_GUIDANCE_MESSAGE
+from app.ai_core.prompts import (
+    GREETING_MESSAGE,
+    NO_BUYBACK_MESSAGE,
+    SAFE_HANDOFF_MESSAGE,
+    STOCK_PRICE_GUIDANCE_MESSAGE,
+)
 from app.ai_core.validator import FACT_TO_CONFIRMED_FIELDS, AIValidator
 from app.core.constants import AIValidationStatus, HandoffReason
 from app.core.errors import ProviderError
@@ -21,6 +28,40 @@ _GREETING_PHRASES = (
     "доброго дня",
     "hello",
     "hi",
+)
+
+_PUNCT_RE = re.compile(r"[^\w\sа-яёА-ЯЁ]+", re.UNICODE)
+_BUYBACK_STRONG = (
+    "скупа",
+    "скупк",
+    "выкуп",
+    "trade in",
+    "tradein",
+    "трейд ин",
+    "трейдин",
+)
+_BUYBACK_VERBS = (
+    "покупа",
+    "купит",
+    "принима",
+    "берёт",
+    "берет",
+    "сдать",
+    "сдаёт",
+    "сдает",
+    "сдаёте",
+    "сдаете",
+)
+_BUYBACK_OBJECTS = (
+    "бу",
+    "ноутбук",
+    "компьют",
+    "техник",
+    "телефон",
+    "айфон",
+    "планшет",
+    "монитор",
+    "видеокарт",
 )
 
 
@@ -45,6 +86,14 @@ class AICore:
                 response_text=GREETING_MESSAGE,
                 sources=[],
                 metadata={"reason": "conversational_greeting"},
+            )
+
+        if self._is_buyback_query(prompt_context.user_message):
+            return ProcessingResult(
+                decision=ProcessingDecision.RESPOND,
+                response_text=self._buyback_answer(prompt_context.verified_sources),
+                sources=source_ids,
+                metadata={"reason": "no_buyback"},
             )
 
         if not prompt_context.verified_sources:
@@ -150,8 +199,15 @@ class AICore:
             metadata={"reason": validation.reason or "handoff_required"},
         )
 
+    def _normalize_for_intent(self, text: str) -> str:
+        """Normalize user text for intent matching (punctuation-independent)."""
+        lowered = text.lower().replace("ё", "е")
+        lowered = lowered.replace("б/у", " бу ").replace("б\\у", " бу ").replace("б у", " бу ")
+        lowered = _PUNCT_RE.sub(" ", lowered)
+        return " ".join(lowered.split())
+
     def _detect_requested_commercial_facts(self, text: str) -> set[str]:
-        lowered = text.lower()
+        lowered = self._normalize_for_intent(text)
         fact_keywords = {
             "price": ("цена", "стоимость", "сколько стоит", "прайс"),
             "stock": ("налич", "остат", "на складе"),
@@ -236,6 +292,24 @@ class AICore:
                     return content
         return STOCK_PRICE_GUIDANCE_MESSAGE
 
+    def _is_buyback_query(self, text: str) -> bool:
+        # Intent from wording/context — "?" not required.
+        normalized = self._normalize_for_intent(text)
+        if any(marker in normalized for marker in _BUYBACK_STRONG):
+            return True
+        has_verb = any(verb in normalized for verb in _BUYBACK_VERBS)
+        has_object = any(obj in normalized for obj in _BUYBACK_OBJECTS)
+        return has_verb and has_object
+
+    def _buyback_answer(self, sources: list[VerifiedSource]) -> str:
+        for source in sources:
+            haystack = f"{source.source_id} {source.title}".lower()
+            if "buyback" in haystack or "скуп" in haystack or "выкуп" in haystack:
+                content = source.content.strip()
+                if content:
+                    return content
+        return NO_BUYBACK_MESSAGE
+
     def _is_sunday_query(self, text: str) -> bool:
         lowered = text.lower()
         return "воскрес" in lowered
@@ -249,6 +323,11 @@ class AICore:
         sources: list[VerifiedSource],
         user_message: str,
     ) -> VerifiedSource:
+        if self._is_buyback_query(user_message):
+            for source in sources:
+                haystack = f"{source.source_id} {source.title}".lower()
+                if "buyback" in haystack or "скуп" in haystack or "выкуп" in haystack:
+                    return source
         if self._is_sunday_query(user_message):
             for source in sources:
                 haystack = f"{source.source_id} {source.title} {source.content}".lower()

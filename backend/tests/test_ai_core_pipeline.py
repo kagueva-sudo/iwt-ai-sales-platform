@@ -108,6 +108,55 @@ async def test_pipeline_stock_question_gives_site_guidance() -> None:
     assert "info@iwt.ru" in (result.response_text or "")
 
 
+async def test_pipeline_buyback_question_answers_no() -> None:
+    from app.ai_core.prompts import NO_BUYBACK_MESSAGE
+
+    # Wrong KB hit (selection FAQ) must not override buyback policy.
+    wrong = VerifiedSource(
+        source_id="faq-pc-selection",
+        source_type="knowledge_base",
+        title="Помощь с выбором",
+        content="Помощь с выбором техники в IWT.",
+        metadata={"confirmed_fields": "content"},
+    )
+    pipeline = _build_pipeline(StubLLMProvider(), sources=[wrong])
+    message = Message(
+        text="Вы скупаете ноутбуки?",
+        channel=ChannelType.MAX,
+        direction=MessageDirection.INBOUND,
+        customer_id="c-1",
+    )
+
+    result = await pipeline.process(message)
+
+    assert result.decision == ProcessingDecision.RESPOND
+    assert result.response_text == NO_BUYBACK_MESSAGE
+    assert result.metadata.get("reason") == "no_buyback"
+    assert "не скупает" in (result.response_text or "").lower()
+
+
+async def test_pipeline_buyback_without_question_mark() -> None:
+    from app.ai_core.prompts import NO_BUYBACK_MESSAGE
+
+    pipeline = _build_pipeline(StubLLMProvider(), sources=[])
+    for text in (
+        "Вы покупаете б/у",
+        "вы покупаете ноутбуки",
+        "Принимаете б/у технику",
+        "Скупаете компьютеры",
+    ):
+        message = Message(
+            text=text,
+            channel=ChannelType.MAX,
+            direction=MessageDirection.INBOUND,
+            customer_id="c-1",
+        )
+        result = await pipeline.process(message)
+        assert result.decision == ProcessingDecision.RESPOND, text
+        assert result.response_text == NO_BUYBACK_MESSAGE, text
+        assert result.metadata.get("reason") == "no_buyback", text
+
+
 async def test_pipeline_greets_on_hello_without_sources() -> None:
     from app.ai_core.prompts import GREETING_MESSAGE
 
