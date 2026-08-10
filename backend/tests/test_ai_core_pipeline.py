@@ -104,7 +104,7 @@ async def test_pipeline_stock_question_gives_site_guidance() -> None:
     assert result.response_text == STOCK_PRICE_GUIDANCE_MESSAGE
     assert "iwt.ru" in (result.response_text or "")
     assert "56-06-06" in (result.response_text or "")
-    assert "903 477-00-88" in (result.response_text or "")
+    assert "79034770088" in (result.response_text or "")
     assert "info@iwt.ru" in (result.response_text or "")
 
 
