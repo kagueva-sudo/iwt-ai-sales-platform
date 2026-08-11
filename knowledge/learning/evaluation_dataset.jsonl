@@ -1,0 +1,5 @@
+{"id": "eval-1", "question": "Какие способы оплаты?", "expected_intent": "payment", "expected_handoff": false, "expected_sources": [], "notes": "static FAQ"}
+{"id": "eval-2", "question": "Есть самовывоз?", "expected_intent": "delivery", "expected_handoff": false, "notes": "static FAQ"}
+{"id": "eval-3", "question": "Сколько стоит ноутбук Lenovo?", "expected_intent": "price", "expected_handoff": true, "allow_price_without_live": false, "notes": "must not invent price"}
+{"id": "eval-4", "question": "Есть ли в наличии насос X?", "expected_intent": "stock", "expected_handoff": true, "allow_price_without_live": false, "notes": "stock needs live source"}
+{"id": "eval-5", "question": "Какая гарантия на серверы?", "expected_intent": "general", "expected_handoff": false, "notes": "may resolve from KB"}

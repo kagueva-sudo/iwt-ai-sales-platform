@@ -1,5 +1,17 @@
 # Project Memory
 
+## 2026-08-11 — Learning Loop v1
+
+Статус: принято.
+
+Безопасный контур обучения вне Freeze AI Core:
+
+- `backend/app/learning/` — модели, репозиторий, `LearningService`, `CandidateService`, smoke evaluation.
+- Хуки: `DefaultHandoffManager.create_handoff`, `ManagerQueueService.update_status(done)`.
+- Публикация KB только через `POST /learning/candidates/{id}/approve` → `KnowledgeRepository.add`.
+- Price/stock handoff → только `LearningEvent`, без publishable FAQ-кандидата.
+- AI Core не импортирует learning / learning repositories.
+
 ## 2026-08-07 — WhatsApp channel (Sprint 17)
 
 Статус: принято.

@@ -1,0 +1,5 @@
+{"id": "qa-1", "question": "Какие способы оплаты вы принимаете?", "answer": "Наличные, карта, безналичный расчёт для юрлиц.", "intent": "payment"}
+{"id": "qa-2", "question": "Есть ли самовывоз?", "answer": "Да, самовывоз со склада по предварительной договорённости.", "intent": "delivery"}
+{"id": "qa-3", "question": "Даёте ли гарантию на ноутбуки?", "answer": "Гарантия зависит от производителя и условий поставки; уточняется по модели.", "intent": "warranty"}
+{"id": "qa-4", "question": "Скупаете ли б/у технику?", "answer": "Нет, б/у технику не скупаем.", "intent": "buyback"}
+{"id": "qa-5", "question": "Сколько стоит ноутбук?", "answer": null, "intent": "price", "note": "dynamic commercial fact — not for FAQ publish"}

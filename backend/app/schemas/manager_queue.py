@@ -20,3 +20,4 @@ class ManagerQueueItemSchema(BaseModel):
 
 class ManagerQueueStatusUpdateSchema(BaseModel):
     status: ManagerQueueStatus
+    manager_answer: str | None = None

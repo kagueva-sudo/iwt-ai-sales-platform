@@ -20,6 +20,9 @@ from app.knowledge_layer.source_selector import SourceSelector
 from app.knowledge_layer.website_provider import WebsiteKnowledgeProvider
 from app.prompt_builder import DefaultPromptBuilder
 from app.providers.website_provider import WebsiteApiProvider
+from app.learning.candidate_service import CandidateService
+from app.learning.repository import LearningRepository, SqlAlchemyLearningRepository
+from app.learning.service import LearningService
 from app.repositories.conversations import SqlAlchemyConversationRepository
 from app.repositories.knowledge import SqlAlchemyKnowledgeRepository
 from app.repositories.manager_queue import SqlAlchemyManagerQueueRepository
@@ -28,6 +31,7 @@ from app.services.conversation_state_service import ConversationStateService
 from app.services.decision_router import DefaultDecisionRouter
 from app.services.handoff_manager import DefaultHandoffManager
 from app.services.logging_service import SqlAlchemyLoggingService
+from app.services.manager_queue_service import ManagerQueueService
 from app.services.message_pipeline import MessagePipelineService
 from app.services.response_sender import ChannelResponseSender, InMemoryResponseSender
 
@@ -37,6 +41,14 @@ _SESSION_REPOSITORY = SqlAlchemySessionRepository()
 _CONVERSATION_REPOSITORY = SqlAlchemyConversationRepository()
 _MANAGER_QUEUE_REPOSITORY: ManagerQueueRepository = SqlAlchemyManagerQueueRepository()
 _LOGGING_SERVICE: LoggingService = SqlAlchemyLoggingService()
+_KNOWLEDGE_REPOSITORY = SqlAlchemyKnowledgeRepository()
+_LEARNING_REPOSITORY: LearningRepository = SqlAlchemyLearningRepository()
+_LEARNING_SERVICE = LearningService(_LEARNING_REPOSITORY)
+_CANDIDATE_SERVICE = CandidateService(
+    learning_repository=_LEARNING_REPOSITORY,
+    knowledge_repository=_KNOWLEDGE_REPOSITORY,
+    logging_service=_LOGGING_SERVICE,
+)
 _IN_MEMORY_SENDER = InMemoryResponseSender()
 _MAX_ADAPTER = MaxChannelAdapter()
 _EMAIL_ADAPTER = EmailChannelAdapter()
@@ -57,8 +69,7 @@ def build_source_selector(providers: list[KnowledgeProvider] | None = None) -> S
         return SourceSelector(providers=providers)
 
     # Default: persisted knowledge + live Website API when WEBSITE_API_URL is set.
-    repo = SqlAlchemyKnowledgeRepository()
-    search_service = KnowledgeSearchService(repo)
+    search_service = KnowledgeSearchService(_KNOWLEDGE_REPOSITORY)
     selected: list[KnowledgeProvider] = [KnowledgeBaseProvider(search_service)]
     if is_website_api_configured():
         selected.append(WebsiteKnowledgeProvider(WebsiteApiProvider()))
@@ -101,13 +112,31 @@ def build_decision_router(
             adapters=channel_adapters if channel_adapters is not None else default_channel_adapters(),
             fallback=_IN_MEMORY_SENDER,
         ),
-        handoff_manager=DefaultHandoffManager(_MANAGER_QUEUE_REPOSITORY),
+        handoff_manager=DefaultHandoffManager(
+            _MANAGER_QUEUE_REPOSITORY,
+            learning_service=_LEARNING_SERVICE,
+        ),
         logging_service=_LOGGING_SERVICE,
     )
 
 
 def get_manager_queue_repository() -> ManagerQueueRepository:
     return _MANAGER_QUEUE_REPOSITORY
+
+
+def get_manager_queue_service() -> ManagerQueueService:
+    return ManagerQueueService(
+        _MANAGER_QUEUE_REPOSITORY,
+        learning_service=_LEARNING_SERVICE,
+    )
+
+
+def get_learning_service() -> LearningService:
+    return _LEARNING_SERVICE
+
+
+def get_candidate_service() -> CandidateService:
+    return _CANDIDATE_SERVICE
 
 
 def get_logging_service() -> LoggingService:

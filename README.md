@@ -96,6 +96,28 @@ Endpoints:
 Задайте `WHATSAPP_ACCESS_TOKEN` и `WHATSAPP_PHONE_NUMBER_ID` для исходящих ответов через Graph API.
 Status callbacks без текста принимаются как `EVENT_RECEIVED` без запуска pipeline.
 
+## Learning Loop v1
+
+Контур обучения **вне AI Core**: handoff / закрытие кейса менеджером → `LearningEvent` + опциональный `KnowledgeCandidate` → ручной approve/reject. AI **не пишет** в Knowledge Base сам; автопубликации нет.
+
+Endpoints (внутренний MVP API без RBAC):
+
+- `GET /learning/candidates`
+- `GET /learning/candidates/{id}`
+- `POST /learning/candidates/{id}/approve` — body `{ "reviewed_by": "..." }`
+- `POST /learning/candidates/{id}/reject` — body `{ "reviewed_by": "...", "reason": "..." }`
+
+Статусы кандидата: `pending` → `approved` | `rejected`.
+
+Правила:
+
+- Для `PRICE_UNKNOWN` / `AVAILABILITY_UNKNOWN` создаётся только событие, без кандидата на FAQ-цену.
+- Approve публикует FAQ (`category=learning`) **без** `price` / `stock_qty` / `delivery_terms` в `confirmed_fields`.
+- Dynamic commercial facts (цена/остаток) — только из Bitrix / live API, не из старых QA.
+- Датасеты: `knowledge/learning/customer_qa.jsonl`, `knowledge/learning/evaluation_dataset.jsonl` (не в system prompt).
+
+При `PATCH /manager-queue/{id}/status` со `status=done` можно передать опциональное `manager_answer` — оно попадёт в pending-кандидата.
+
 ## Ubuntu 24.04 Deployment
 
 1. Install Docker Engine and Docker Compose plugin:

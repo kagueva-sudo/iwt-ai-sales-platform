@@ -140,3 +140,32 @@ class KnowledgeItemModel(Base):
     confirmed_fields_json: Mapped[str] = mapped_column(Text, default="[]")
     metadata_json: Mapped[str] = mapped_column(Text, default="{}")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC), index=True)
+
+
+class KnowledgeCandidateModel(Base):
+    __tablename__ = "knowledge_candidates"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    conversation_id: Mapped[str] = mapped_column(String(64), index=True)
+    question: Mapped[str] = mapped_column(Text)
+    ai_answer: Mapped[str | None] = mapped_column(Text, nullable=True)
+    manager_answer: Mapped[str | None] = mapped_column(Text, nullable=True)
+    source_refs_json: Mapped[str] = mapped_column(Text, default="[]")
+    intent: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(32), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC), index=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    reviewed_by: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    published_knowledge_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    kb_version: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+
+class LearningEventModel(Base):
+    __tablename__ = "learning_events"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    conversation_id: Mapped[str] = mapped_column(String(64), index=True)
+    event_type: Mapped[str] = mapped_column(String(64), index=True)
+    payload_json: Mapped[str] = mapped_column(Text, default="{}")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC), index=True)

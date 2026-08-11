@@ -5,13 +5,19 @@ from app.contracts.manager_queue_repository import ManagerQueueRepository
 from app.core.constants import ChannelType, HandoffReason
 from app.domain.manager_queue import ManagerQueueItem
 from app.domain.processing import ProcessingResult
+from app.learning.service import LearningService
 
 
 class DefaultHandoffManager(HandoffManager):
     """Creates internal manager queue records. Does not call CRM or AI Core."""
 
-    def __init__(self, repository: ManagerQueueRepository) -> None:
+    def __init__(
+        self,
+        repository: ManagerQueueRepository,
+        learning_service: LearningService | None = None,
+    ) -> None:
         self.repository = repository
+        self.learning_service = learning_service
 
     async def create_handoff(self, result: ProcessingResult) -> str:
         item = ManagerQueueItem(
@@ -24,4 +30,6 @@ class DefaultHandoffManager(HandoffManager):
             handoff_reason=result.handoff_reason or HandoffReason.UNKNOWN,
         )
         saved = await self.repository.add(item)
+        if self.learning_service is not None:
+            await self.learning_service.on_handoff(result, saved.request_id)
         return saved.request_id
