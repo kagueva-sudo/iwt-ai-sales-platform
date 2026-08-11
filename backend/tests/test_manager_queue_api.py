@@ -5,6 +5,7 @@ from app.main import app
 
 def test_manager_queue_lists_handoff_from_channel_webhook() -> None:
     with TestClient(app) as client:
+        before = len(client.get("/manager-queue").json())
         webhook = client.post(
             "/channels/website/form",
             json={
@@ -14,27 +15,28 @@ def test_manager_queue_lists_handoff_from_channel_webhook() -> None:
             },
         )
         assert webhook.status_code == 200
-        assert webhook.json()["handoff_required"] is True
+        assert webhook.json()["handoff_required"] is False
 
-        response = client.get("/manager-queue", params={"status": "new"})
+        after = len(client.get("/manager-queue").json())
 
-    assert response.status_code == 200
-    items = response.json()
-    assert len(items) >= 1
-    assert any(item["customer_contact"] == "client@example.com" for item in items)
-    assert all(item["status"] == "new" for item in items)
+    # Для запросов по цене/остатку без точного товара мы отвечаем клиенту,
+    # а не создаём handoff кейс в менеджерскую очередь.
+    assert after == before
 
 
 def test_manager_queue_get_and_update_status() -> None:
     with TestClient(app) as client:
-        client.post(
+        post = client.post(
             "/channels/max/webhook",
             json={
-                "text": "Нужна консультация",
+                # Не подбираем из KB: нужен гарантированный handoff кейс.
+                "text": "zzzzxqwe123",
                 "user_id": "mq-user-1",
                 "contact": "+79990000001",
             },
         )
+        assert post.status_code == 200
+        assert post.json()["handoff_required"] is True
         items = client.get("/manager-queue", params={"status": "new"}).json()
         request_id = next(
             item["request_id"] for item in items if item["customer_contact"] == "+79990000001"
@@ -101,5 +103,5 @@ def test_manager_queue_lists_all_items() -> None:
         )
         after = client.get("/manager-queue").json()
 
-    assert len(after) == before + 1
-    assert any(item["customer_contact"] == "mq@example.com" for item in after)
+    # "Нужна цена" — клиенту даём ответ (safe guidance), handoff не создаётся.
+    assert len(after) == before

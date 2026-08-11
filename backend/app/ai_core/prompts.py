@@ -19,6 +19,11 @@ STOCK_PRICE_GUIDANCE_MESSAGE = (
     "или по почте info@iwt.ru."
 )
 
+CATEGORY_PRICE_NARROWING_MESSAGE_TEMPLATE = (
+    "Есть разные {category}. Уточните модель, бренд или бюджет — и я подберу варианты с актуальными "
+    "ценами и наличием из каталога IWT."
+)
+
 NO_BUYBACK_MESSAGE = (
     "Нет. IWT не скупает и не выкупает технику (в том числе ноутбуки и компьютеры), "
     "не принимает б/у в зачёт и не делает trade-in.\n\n"

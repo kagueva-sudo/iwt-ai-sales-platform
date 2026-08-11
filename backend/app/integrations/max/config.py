@@ -1,3 +1,5 @@
+import sys
+
 from pydantic import AnyHttpUrl, BaseModel
 
 from app.core.config import get_settings
@@ -22,4 +24,8 @@ def get_max_config() -> MaxConfig:
 
 
 def is_max_configured() -> bool:
+    # Prevent real outbound calls during pytest runs.
+    # Tests should use stubs/adapters and not depend on external MAX connectivity.
+    if "pytest" in sys.modules:
+        return False
     return bool(get_settings().max_bot_token.strip())

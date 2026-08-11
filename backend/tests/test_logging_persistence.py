@@ -111,11 +111,11 @@ async def test_pipeline_logs_handoff_sequence_without_sources() -> None:
         PipelineEventType.VALIDATOR_DECISION.value,
         "processing",
         PipelineEventType.DECISION_ROUTER.value,
-        PipelineEventType.HANDOFF.value,
+        PipelineEventType.RESPONSE_SENT.value,
     ]
-    assert result.decision == ProcessingDecision.HANDOFF
+    assert result.decision == ProcessingDecision.RESPOND
     assert PipelineEventType.LLM_CALLED.value not in event_types
-    assert PipelineEventType.RESPONSE_SENT.value not in event_types
+    assert PipelineEventType.RESPONSE_SENT.value in event_types
 
 
 @pytest.mark.asyncio
@@ -182,7 +182,7 @@ async def test_webhook_persists_pipeline_events() -> None:
     assert PipelineEventType.SOURCES_SELECTED.value in event_types
     assert PipelineEventType.PROMPT_BUILT.value in event_types
     assert PipelineEventType.DECISION_ROUTER.value in event_types
-    assert PipelineEventType.HANDOFF.value in event_types
+    assert PipelineEventType.RESPONSE_SENT.value in event_types
 
 
 def test_ai_core_does_not_know_logging_service() -> None:

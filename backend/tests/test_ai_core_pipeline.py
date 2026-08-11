@@ -88,7 +88,7 @@ async def test_pipeline_responds_with_confirmed_sources() -> None:
 
 
 async def test_pipeline_stock_question_gives_site_guidance() -> None:
-    from app.ai_core.prompts import STOCK_PRICE_GUIDANCE_MESSAGE
+    from app.ai_core.prompts import CATEGORY_PRICE_NARROWING_MESSAGE_TEMPLATE
 
     pipeline = _build_pipeline(StubLLMProvider(), sources=[])
     message = Message(
@@ -101,11 +101,8 @@ async def test_pipeline_stock_question_gives_site_guidance() -> None:
     result = await pipeline.process(message)
 
     assert result.decision == ProcessingDecision.RESPOND
-    assert result.response_text == STOCK_PRICE_GUIDANCE_MESSAGE
-    assert "iwt.ru" in (result.response_text or "")
-    assert "56-06-06" in (result.response_text or "")
-    assert "79034770088" in (result.response_text or "")
-    assert "info@iwt.ru" in (result.response_text or "")
+    assert result.response_text == CATEGORY_PRICE_NARROWING_MESSAGE_TEMPLATE.format(category="ноутбуки")
+    assert result.metadata.get("reason") == "category_price_narrowing"
 
 
 async def test_pipeline_buyback_question_answers_no() -> None:

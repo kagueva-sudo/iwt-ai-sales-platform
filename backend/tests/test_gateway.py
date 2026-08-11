@@ -18,5 +18,5 @@ def test_gateway_accepts_normalized_message() -> None:
         )
 
     assert response.status_code == 200
-    assert response.json()["handoff_required"] is True
-    assert response.json()["validation_status"] == "handoff_required"
+    assert response.json()["handoff_required"] is False
+    assert response.json()["validation_status"] == "approved"

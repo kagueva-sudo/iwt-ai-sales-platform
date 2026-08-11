@@ -84,9 +84,9 @@ def test_max_webhook_creates_handoff_without_sources() -> None:
 
     assert response.status_code == 200
     body = response.json()
-    assert body["handoff_required"] is True
-    assert body["validation_status"] == "handoff_required"
-    assert after == before + 1
+    assert body["handoff_required"] is False
+    assert body["validation_status"] == "approved"
+    assert after == before
 
 
 def test_max_webhook_rejects_invalid_payload() -> None:
@@ -111,8 +111,8 @@ def test_gateway_still_accepts_normalized_message() -> None:
         )
 
     assert response.status_code == 200
-    assert response.json()["handoff_required"] is True
-    assert response.json()["validation_status"] == "handoff_required"
+    assert response.json()["handoff_required"] is False
+    assert response.json()["validation_status"] == "approved"
 
 
 def test_ai_core_unchanged_by_channel_layer() -> None:

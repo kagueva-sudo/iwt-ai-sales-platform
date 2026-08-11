@@ -3,6 +3,7 @@ import re
 from app.ai_core.llm_provider import LLMProvider
 from app.ai_core.prompts import (
     GREETING_MESSAGE,
+    CATEGORY_PRICE_NARROWING_MESSAGE_TEMPLATE,
     NO_BUYBACK_MESSAGE,
     SAFE_HANDOFF_MESSAGE,
     STOCK_PRICE_GUIDANCE_MESSAGE,
@@ -98,6 +99,13 @@ class AICore:
 
         if not prompt_context.verified_sources:
             if requested_facts and requested_facts <= {"price", "stock"}:
+                if self._is_broad_category_price_query(prompt_context.user_message):
+                    return ProcessingResult(
+                        decision=ProcessingDecision.RESPOND,
+                        response_text=self._category_price_narrowing_answer(prompt_context.user_message),
+                        sources=[],
+                        metadata={"reason": "category_price_narrowing"},
+                    )
                 return ProcessingResult(
                     decision=ProcessingDecision.RESPOND,
                     response_text=STOCK_PRICE_GUIDANCE_MESSAGE,
@@ -117,6 +125,13 @@ class AICore:
             and requested_facts <= {"price", "stock"}
             and not self._sources_cover_facts(prompt_context.verified_sources, requested_facts)
         ):
+            if self._is_broad_category_price_query(prompt_context.user_message):
+                return ProcessingResult(
+                    decision=ProcessingDecision.RESPOND,
+                    response_text=self._category_price_narrowing_answer(prompt_context.user_message),
+                    sources=source_ids,
+                    metadata={"reason": "category_price_narrowing"},
+                )
             return ProcessingResult(
                 decision=ProcessingDecision.RESPOND,
                 response_text=self._stock_price_guidance_answer(prompt_context.verified_sources),
@@ -291,6 +306,54 @@ class AICore:
                 if content:
                     return content
         return STOCK_PRICE_GUIDANCE_MESSAGE
+
+    def _is_broad_category_price_query(self, text: str) -> bool:
+        """Heuristic: category-level queries like "ноутбук/компьютер" without model/brand/code."""
+        normalized = self._normalize_for_intent(text)
+        lowered = normalized.lower()
+
+        category_markers = (
+            "ноутбук",
+            "ноутбуки",
+            "компьютер",
+            "компьютеры",
+            "пк",
+            "телефон",
+            "смартфон",
+            "планшет",
+            "монитор",
+        )
+        id_markers = (
+            "артикул",
+            "sku",
+            "код",
+            "модель",
+            "бренд",
+            "part",
+            "серия",
+        )
+
+        has_category = any(marker in lowered for marker in category_markers)
+        has_identifier = any(marker in lowered for marker in id_markers) or re.search(r"\d{3,}", lowered) is not None
+
+        # If the user did not specify anything to uniquely identify a product, ask to narrow.
+        return has_category and not has_identifier
+
+    def _category_price_narrowing_answer(self, text: str) -> str:
+        normalized = self._normalize_for_intent(text)
+        lowered = normalized.lower()
+
+        # Keep wording close to what the user asked.
+        category = "товара"
+        for marker in ("ноутбуки", "ноутбук", "компьютеры", "компьютер", "пк", "телефоны", "телефон", "планшеты", "планшет"):
+            if marker in lowered:
+                category = marker
+                break
+
+        # Normalize some forms (very small tweak to avoid "ноутбукa" style).
+        if category == "ноутбук":
+            category = "ноутбуки"
+        return CATEGORY_PRICE_NARROWING_MESSAGE_TEMPLATE.format(category=category)
 
     def _is_buyback_query(self, text: str) -> bool:
         # Intent from wording/context — "?" not required.
