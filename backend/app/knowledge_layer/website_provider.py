@@ -36,12 +36,18 @@ class WebsiteKnowledgeProvider(KnowledgeProvider):
             metadata["stock_qty"] = str(product.stock_qty)
         if product.delivery_terms:
             metadata["delivery_terms"] = product.delivery_terms
+        if product.source_url:
+            metadata["source_url"] = product.source_url
+
+        content = product.description or product.name
+        if product.source_url and product.source_url not in content:
+            content = f"{content}\nСсылка: {product.source_url}"
 
         return VerifiedSource(
             source_id=product.sku,
             source_type=self.provider_name,
             title=product.name,
-            content=product.description or product.name,
+            content=content,
             metadata=metadata,
         )
 

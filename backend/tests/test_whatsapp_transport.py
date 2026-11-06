@@ -96,7 +96,7 @@ async def test_whatsapp_adapter_normalizes_cloud_api_payload() -> None:
     assert message.text == "Нужна цена насоса"
     assert message.customer_id == "79001234567"
     assert message.customer_contact == "Иван"
-    assert message.id.startswith("wamid.")
+    assert len(message.id) == 36
 
 
 @pytest.mark.asyncio

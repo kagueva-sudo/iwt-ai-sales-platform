@@ -125,7 +125,10 @@ class HttpWhatsAppTransport:
         if status >= 500:
             raise WhatsAppUnavailableError(f"WhatsApp API server error (HTTP {status}).")
         if status >= 400:
-            raise WhatsAppUnavailableError(f"WhatsApp API returned HTTP {status}.")
+            detail = (response.text or "").strip().replace("\n", " ")[:500]
+            raise WhatsAppUnavailableError(
+                f"WhatsApp API returned HTTP {status}: {detail or 'no body'}"
+            )
 
         try:
             payload = response.json()

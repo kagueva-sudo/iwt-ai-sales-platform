@@ -1,12 +1,16 @@
 import re
 
+from app.ai_core.commercial_facts import detect_requested_commercial_facts, normalize_for_intent
 from app.ai_core.llm_provider import LLMProvider
 from app.ai_core.prompts import (
-    GREETING_MESSAGE,
+    CARTRIDGE_CLARIFY_MESSAGE,
     CATEGORY_PRICE_NARROWING_MESSAGE_TEMPLATE,
+    GREETING_MESSAGE,
     NO_BUYBACK_MESSAGE,
+    PRODUCT_CLARIFY_MESSAGE,
     SAFE_HANDOFF_MESSAGE,
     STOCK_PRICE_GUIDANCE_MESSAGE,
+    THANKS_MESSAGE,
 )
 from app.ai_core.validator import FACT_TO_CONFIRMED_FIELDS, AIValidator
 from app.core.constants import AIValidationStatus, HandoffReason
@@ -31,7 +35,40 @@ _GREETING_PHRASES = (
     "hi",
 )
 
-_PUNCT_RE = re.compile(r"[^\w\sа-яёА-ЯЁ]+", re.UNICODE)
+_THANKS_PHRASES = (
+    "спасибо",
+    "благодарю",
+    "спс",
+    "thanks",
+    "thank you",
+)
+
+_MANAGER_MARKERS = (
+    "менеджер",
+    "оператор",
+    "живой человек",
+    "свяжите с",
+    "соедините",
+    "позовите",
+    "позвать менеджер",
+    "нужен менеджер",
+    "хочу менеджер",
+)
+
+_PRODUCT_MARKERS = (
+    "товар",
+    "ноутбук",
+    "компьютер",
+    "принтер",
+    "монитор",
+    "картридж",
+    "сервер",
+    "смартфон",
+    "планшет",
+    "мышь",
+    "клавиатур",
+)
+
 _BUYBACK_STRONG = (
     "скупа",
     "скупк",
@@ -78,46 +115,89 @@ class AICore:
 
     async def process(self, prompt_context: PromptContext) -> ProcessingResult:
         source_ids = [source.source_id for source in prompt_context.verified_sources]
-        requested_facts = self._detect_requested_commercial_facts(prompt_context.user_message)
+        user_text = prompt_context.user_message
+        intent = self._classify_intent(user_text, prompt_context)
+        requested_facts = detect_requested_commercial_facts(user_text)
 
-        # Pure greetings must not fall through to KB (e.g. "день" → "деньги"/оплата).
-        if self._is_conversational_open(prompt_context.user_message) and not requested_facts:
+        if intent == "greeting" and not requested_facts:
             return ProcessingResult(
                 decision=ProcessingDecision.RESPOND,
                 response_text=GREETING_MESSAGE,
                 sources=[],
-                metadata={"reason": "conversational_greeting"},
+                metadata={"reason": "conversational_greeting", "intent": intent},
             )
 
-        if self._is_buyback_query(prompt_context.user_message):
+        if intent == "thanks" and not requested_facts:
+            return ProcessingResult(
+                decision=ProcessingDecision.RESPOND,
+                response_text=THANKS_MESSAGE,
+                sources=[],
+                metadata={"reason": "conversational_thanks", "intent": intent},
+            )
+
+        if intent == "manager_request":
+            return ProcessingResult(
+                decision=ProcessingDecision.HANDOFF,
+                response_text=SAFE_HANDOFF_MESSAGE,
+                handoff_reason=HandoffReason.CLIENT_REQUEST_MANAGER,
+                sources=source_ids,
+                metadata={"reason": "client_request_manager", "intent": intent},
+            )
+
+        if self._is_buyback_query(user_text):
             return ProcessingResult(
                 decision=ProcessingDecision.RESPOND,
                 response_text=self._buyback_answer(prompt_context.verified_sources),
                 sources=source_ids,
-                metadata={"reason": "no_buyback"},
+                metadata={"reason": "no_buyback", "intent": "buyback"},
             )
 
         if not prompt_context.verified_sources:
-            if requested_facts and requested_facts <= {"price", "stock"}:
-                if self._is_broad_category_price_query(prompt_context.user_message):
+            if intent in {"product_search", "product_question", "consultation"} and not requested_facts:
+                if self._has_product_identifier(user_text) or self._history_mentions_product(prompt_context) and self._has_product_identifier(user_text):
                     return ProcessingResult(
                         decision=ProcessingDecision.RESPOND,
-                        response_text=self._category_price_narrowing_answer(prompt_context.user_message),
+                        response_text=STOCK_PRICE_GUIDANCE_MESSAGE,
                         sources=[],
-                        metadata={"reason": "category_price_narrowing"},
+                        metadata={"reason": "product_followup_guidance", "intent": intent},
+                    )
+                answer = self._product_clarify_answer(user_text, prompt_context)
+                return ProcessingResult(
+                    decision=ProcessingDecision.RESPOND,
+                    response_text=answer,
+                    sources=[],
+                    metadata={"reason": "product_clarify", "intent": intent},
+                )
+            if requested_facts and requested_facts <= {"price", "stock"}:
+                if self._is_broad_category_price_query(user_text):
+                    return ProcessingResult(
+                        decision=ProcessingDecision.RESPOND,
+                        response_text=self._category_price_narrowing_answer(user_text),
+                        sources=[],
+                        metadata={"reason": "category_price_narrowing", "intent": intent},
                     )
                 return ProcessingResult(
                     decision=ProcessingDecision.RESPOND,
                     response_text=STOCK_PRICE_GUIDANCE_MESSAGE,
                     sources=[],
-                    metadata={"reason": "stock_price_guidance"},
+                    metadata={"reason": "stock_price_guidance", "intent": intent},
+                )
+            if intent == "unknown" or not requested_facts:
+                return ProcessingResult(
+                    decision=ProcessingDecision.NEEDS_MORE_DATA,
+                    response_text=(
+                        "Не совсем понял запрос. Уточните, пожалуйста: нужен подбор товара, "
+                        "цена, наличие, доставка, оплата или связь с менеджером?"
+                    ),
+                    sources=[],
+                    metadata={"reason": "clarify_unknown", "intent": intent},
                 )
             return ProcessingResult(
                 decision=ProcessingDecision.HANDOFF,
                 response_text=SAFE_HANDOFF_MESSAGE,
                 handoff_reason=HandoffReason.NO_CONFIRMED_DATA,
                 sources=[],
-                metadata={"reason": "no_verified_sources"},
+                metadata={"reason": "no_verified_sources", "intent": intent},
             )
 
         if (
@@ -125,24 +205,24 @@ class AICore:
             and requested_facts <= {"price", "stock"}
             and not self._sources_cover_facts(prompt_context.verified_sources, requested_facts)
         ):
-            if self._is_broad_category_price_query(prompt_context.user_message):
+            if self._is_broad_category_price_query(user_text):
                 return ProcessingResult(
                     decision=ProcessingDecision.RESPOND,
-                    response_text=self._category_price_narrowing_answer(prompt_context.user_message),
+                    response_text=self._category_price_narrowing_answer(user_text),
                     sources=source_ids,
-                    metadata={"reason": "category_price_narrowing"},
+                    metadata={"reason": "category_price_narrowing", "intent": intent},
                 )
             return ProcessingResult(
                 decision=ProcessingDecision.RESPOND,
                 response_text=self._stock_price_guidance_answer(prompt_context.verified_sources),
                 sources=source_ids,
-                metadata={"reason": "stock_price_guidance"},
+                metadata={"reason": "stock_price_guidance", "intent": intent},
             )
 
         try:
             draft = await self.llm_provider.generate_response(
                 prompt_context.system_prompt,
-                prompt_context.user_message,
+                self._compose_llm_user_message(prompt_context),
             )
             ai_response = AIResponse(
                 text=draft,
@@ -155,11 +235,11 @@ class AICore:
                     decision=ProcessingDecision.RESPOND,
                     response_text=self._format_kb_answer(
                         prompt_context.verified_sources,
-                        prompt_context.user_message,
+                        user_text,
                     ),
                     sources=source_ids,
                     errors=[str(exc)],
-                    metadata={"reason": "llm_fallback_kb"},
+                    metadata={"reason": "llm_fallback_kb", "intent": intent},
                 )
             return ProcessingResult(
                 decision=ProcessingDecision.ERROR,
@@ -167,10 +247,12 @@ class AICore:
                 handoff_reason=HandoffReason.LLM_ERROR,
                 sources=source_ids,
                 errors=[str(exc)],
+                metadata={"intent": intent},
             )
 
         validation = self.validator.validate(ai_response, prompt_context.verified_sources)
         result = self._to_processing_result(ai_response, validation)
+        result.metadata.setdefault("intent", intent)
         if (
             result.decision != ProcessingDecision.RESPOND
             and self._sources_cover_facts(prompt_context.verified_sources, requested_facts)
@@ -179,12 +261,13 @@ class AICore:
                 decision=ProcessingDecision.RESPOND,
                 response_text=self._format_kb_answer(
                     prompt_context.verified_sources,
-                    prompt_context.user_message,
+                    user_text,
                 ),
                 sources=source_ids,
                 metadata={
                     "reason": "validator_fallback_kb",
                     "validation_reason": result.metadata.get("reason", validation.reason or ""),
+                    "intent": intent,
                 },
             )
         return result
@@ -215,39 +298,139 @@ class AICore:
         )
 
     def _normalize_for_intent(self, text: str) -> str:
-        """Normalize user text for intent matching (punctuation-independent)."""
-        lowered = text.lower().replace("ё", "е")
-        lowered = lowered.replace("б/у", " бу ").replace("б\\у", " бу ").replace("б у", " бу ")
-        lowered = _PUNCT_RE.sub(" ", lowered)
-        return " ".join(lowered.split())
+        return normalize_for_intent(text)
 
     def _detect_requested_commercial_facts(self, text: str) -> set[str]:
-        lowered = self._normalize_for_intent(text)
-        fact_keywords = {
-            "price": ("цена", "стоимость", "сколько стоит", "прайс"),
-            "stock": ("налич", "остат", "на складе"),
-            "characteristics": ("характерист", "параметр", "мощность", "размер", "габарит"),
-            "delivery_terms": ("срок", "поставка", "доставка", "когда будет"),
-            "payment_terms": ("оплат", "платеж", "наличн", "карт", "банковск", "сбербанк"),
-            "warranty_terms": ("гарант", "возврат", "обмен", "сервис", "недостат", "претенз"),
-        }
-        return {
-            fact
-            for fact, keywords in fact_keywords.items()
-            if any(keyword in lowered for keyword in keywords)
-        }
+        return detect_requested_commercial_facts(text)
+
+    def _classify_intent(self, text: str, prompt_context: PromptContext) -> str:
+        normalized = self._normalize_for_intent(text)
+        if not normalized:
+            return "unknown"
+        if self._is_conversational_open(text):
+            return "greeting"
+        if self._is_thanks(normalized):
+            return "thanks"
+        if self._is_manager_request(normalized):
+            return "manager_request"
+        if self._is_buyback_query(text):
+            return "buyback"
+
+        facts = detect_requested_commercial_facts(text)
+        if "price" in facts:
+            return "price_question"
+        if "stock" in facts:
+            return "availability_question"
+        if "delivery_terms" in facts:
+            return "delivery_question"
+        if "payment_terms" in facts:
+            return "payment_question"
+        if "warranty_terms" in facts:
+            return "warranty_question"
+        if "characteristics" in facts:
+            return "product_question"
+        if self._mentions_product(normalized) or self._looks_like_product_followup(normalized, prompt_context):
+            return "product_search"
+        if any(token in normalized for token in ("консульт", "помогите выбрать", "что выбрать", "не знаю что")):
+            return "consultation"
+        if any(token in normalized for token in ("заказ", "заявк", "статус")):
+            return "order_status"
+        if any(token in normalized for token in ("компани", "о вас", "iwt", "адрес", "режим работ")):
+            return "company_info"
+        if any(token in normalized for token in ("жалоб", "претенз", "недовольн")):
+            return "complaint"
+        if self._is_vague_followup(normalized) and prompt_context.recent_messages:
+            return "product_search"
+        return "unknown"
 
     def _is_conversational_open(self, text: str) -> bool:
-        normalized = " ".join(text.lower().strip().split())
+        normalized = self._normalize_for_intent(text)
         if not normalized:
             return False
         if normalized in _GREETING_PHRASES:
             return True
         return any(
-            normalized == phrase or normalized.startswith(f"{phrase} ") or normalized.startswith(f"{phrase},")
+            normalized == phrase or normalized.startswith(f"{phrase} ")
             for phrase in _GREETING_PHRASES
-            if phrase not in {"/start", "start", "hi", "hello"}
         )
+
+    def _is_thanks(self, normalized: str) -> bool:
+        return normalized in _THANKS_PHRASES or any(
+            normalized == phrase or normalized.startswith(f"{phrase} ") for phrase in _THANKS_PHRASES
+        )
+
+    def _is_manager_request(self, normalized: str) -> bool:
+        return any(marker in normalized for marker in _MANAGER_MARKERS)
+
+    def _mentions_product(self, normalized: str) -> bool:
+        return any(marker in normalized for marker in _PRODUCT_MARKERS)
+
+    def _looks_like_product_followup(self, normalized: str, prompt_context: PromptContext) -> bool:
+        if not prompt_context.recent_messages:
+            return False
+        if len(normalized.split()) <= 6 and re.search(r"[a-zа-яё]*\d|\d", normalized, re.IGNORECASE):
+            history = " ".join(item.text.lower() for item in prompt_context.recent_messages[-6:])
+            return any(marker in history for marker in _PRODUCT_MARKERS)
+        return False
+
+    def _is_vague_followup(self, normalized: str) -> bool:
+        vague = (
+            "подходящий вариант",
+            "другой вариант",
+            "есть другой",
+            "что еще",
+            "что ещё",
+            "не знаю",
+            "подскажите",
+        )
+        return any(marker in normalized for marker in vague)
+
+    def _compose_llm_user_message(self, prompt_context: PromptContext) -> str:
+        history = list(prompt_context.recent_messages or [])
+        filtered = [
+            item
+            for item in history
+            if not (
+                item.role in {"user", "customer", "client"}
+                and item.text.strip() == prompt_context.user_message.strip()
+            )
+        ]
+        recent = filtered[-6:]
+        if not recent and not prompt_context.active_product and not prompt_context.active_topic:
+            return prompt_context.user_message
+
+        lines: list[str] = []
+        if prompt_context.active_topic:
+            lines.append(f"Активная тема: {prompt_context.active_topic}")
+        if prompt_context.active_product:
+            lines.append(f"Активный товар: {prompt_context.active_product}")
+        if recent:
+            lines.append("История диалога:")
+            for item in recent:
+                role = "Клиент" if item.role in {"user", "customer", "client"} else "Ассистент"
+                lines.append(f"{role}: {item.text}")
+        lines.append(f"Текущее сообщение клиента: {prompt_context.user_message}")
+        return "\n".join(lines)
+
+    def _product_clarify_answer(self, text: str, prompt_context: PromptContext | None = None) -> str:
+        normalized = self._normalize_for_intent(text)
+        history = ""
+        if prompt_context is not None:
+            history = " ".join(item.text.lower() for item in prompt_context.recent_messages[-6:])
+        if "картридж" in normalized or "картридж" in history:
+            return CARTRIDGE_CLARIFY_MESSAGE
+        return PRODUCT_CLARIFY_MESSAGE
+
+    def _has_product_identifier(self, text: str) -> bool:
+        normalized = self._normalize_for_intent(text)
+        if re.search(r"\d{2,}", normalized):
+            return True
+        id_markers = ("артикул", "sku", "модель", "laserjet", "lenovo", "hp ", "asus", "acer")
+        return any(marker in normalized for marker in id_markers)
+
+    def _history_mentions_product(self, prompt_context: PromptContext) -> bool:
+        history = " ".join(item.text.lower() for item in prompt_context.recent_messages[-6:])
+        return any(marker in history for marker in _PRODUCT_MARKERS)
 
     def _sources_cover_facts(self, sources: list[VerifiedSource], facts: set[str]) -> bool:
         if not sources:
@@ -308,7 +491,6 @@ class AICore:
         return STOCK_PRICE_GUIDANCE_MESSAGE
 
     def _is_broad_category_price_query(self, text: str) -> bool:
-        """Heuristic: category-level queries like "ноутбук/компьютер" without model/brand/code."""
         normalized = self._normalize_for_intent(text)
         lowered = normalized.lower()
 
@@ -322,6 +504,10 @@ class AICore:
             "смартфон",
             "планшет",
             "монитор",
+            "картридж",
+            "картриджи",
+            "принтер",
+            "принтеры",
         )
         id_markers = (
             "артикул",
@@ -335,28 +521,38 @@ class AICore:
 
         has_category = any(marker in lowered for marker in category_markers)
         has_identifier = any(marker in lowered for marker in id_markers) or re.search(r"\d{3,}", lowered) is not None
-
-        # If the user did not specify anything to uniquely identify a product, ask to narrow.
         return has_category and not has_identifier
 
     def _category_price_narrowing_answer(self, text: str) -> str:
         normalized = self._normalize_for_intent(text)
         lowered = normalized.lower()
 
-        # Keep wording close to what the user asked.
+        if "картридж" in lowered:
+            return CARTRIDGE_CLARIFY_MESSAGE
+
         category = "товара"
-        for marker in ("ноутбуки", "ноутбук", "компьютеры", "компьютер", "пк", "телефоны", "телефон", "планшеты", "планшет"):
+        for marker in (
+            "ноутбуки",
+            "ноутбук",
+            "компьютеры",
+            "компьютер",
+            "пк",
+            "телефоны",
+            "телефон",
+            "планшеты",
+            "планшет",
+            "принтеры",
+            "принтер",
+        ):
             if marker in lowered:
                 category = marker
                 break
 
-        # Normalize some forms (very small tweak to avoid "ноутбукa" style).
         if category == "ноутбук":
             category = "ноутбуки"
         return CATEGORY_PRICE_NARROWING_MESSAGE_TEMPLATE.format(category=category)
 
     def _is_buyback_query(self, text: str) -> bool:
-        # Intent from wording/context — "?" not required.
         normalized = self._normalize_for_intent(text)
         if any(marker in normalized for marker in _BUYBACK_STRONG):
             return True
@@ -374,8 +570,7 @@ class AICore:
         return NO_BUYBACK_MESSAGE
 
     def _is_sunday_query(self, text: str) -> bool:
-        lowered = text.lower()
-        return "воскрес" in lowered
+        return "воскрес" in text.lower()
 
     def _is_lunch_query(self, text: str) -> bool:
         lowered = text.lower()
@@ -430,7 +625,7 @@ class AICore:
         sources: list[VerifiedSource],
         user_message: str = "",
     ) -> str:
-        # Reply with answer content only — titles are often FAQ questions.
         source = self._pick_best_source(sources, user_message)
         content = source.content.strip()
         return content or SAFE_HANDOFF_MESSAGE
+

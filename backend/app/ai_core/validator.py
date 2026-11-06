@@ -1,3 +1,4 @@
+from app.ai_core.commercial_facts import detect_requested_commercial_facts
 from app.ai_core.prompts import SAFE_HANDOFF_MESSAGE
 from app.core.constants import AIValidationStatus
 from app.domain.ai import AIResponse, ValidationResult
@@ -65,7 +66,7 @@ class AIValidator:
         ai_response: AIResponse,
         verified_sources: list[VerifiedSource],
     ) -> set[str]:
-        requested_facts = self._detect_commercial_facts(ai_response.text) | ai_response.requested_facts
+        requested_facts = detect_requested_commercial_facts(ai_response.text) | ai_response.requested_facts
         if not requested_facts:
             return set()
 
@@ -90,20 +91,7 @@ class AIValidator:
         return {part.strip() for part in raw.split(",") if part.strip()}
 
     def _detect_commercial_facts(self, text: str) -> set[str]:
-        lowered = text.lower()
-        fact_keywords = {
-            "price": ("цена", "стоимость", "прайс"),
-            "stock": ("налич", "остат", "склад"),
-            "characteristics": ("характерист", "мощность", "размер", "габарит", "описание"),
-            "delivery_terms": ("срок", "поставка", "доставка", "когда будет"),
-            "payment_terms": ("оплат", "платеж", "наличн", "карт", "сбербанк"),
-            "warranty_terms": ("гарант", "возврат", "обмен", "сервис", "недостат", "претенз"),
-        }
-        return {
-            fact
-            for fact, keywords in fact_keywords.items()
-            if any(keyword in lowered for keyword in keywords)
-        }
+        return detect_requested_commercial_facts(text)
 
     def _source_ids(self, verified_sources: list[VerifiedSource]) -> list[str]:
         return [source.source_id for source in verified_sources]

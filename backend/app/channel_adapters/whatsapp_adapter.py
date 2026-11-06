@@ -1,4 +1,4 @@
-from uuid import uuid4
+from uuid import NAMESPACE_URL, uuid4, uuid5
 
 from app.channel_adapters.whatsapp_payload import (
     extract_whatsapp_contact_name,
@@ -44,13 +44,16 @@ class WhatsAppChannelAdapter(ChannelAdapter):
         self._routes[wa_id] = wa_id
 
         external_id = extract_whatsapp_external_message_id(payload)
+        message_id = (
+            str(uuid5(NAMESPACE_URL, f"whatsapp:{external_id}")) if external_id else str(uuid4())
+        )
         return Message(
             text=text,
             channel=ChannelType.WHATSAPP,
             direction=MessageDirection.INBOUND,
             customer_id=wa_id,
             customer_contact=extract_whatsapp_contact_name(payload) or wa_id,
-            id=external_id or str(uuid4()),
+            id=message_id,
         )
 
     async def send_message(self, message: Message) -> str:

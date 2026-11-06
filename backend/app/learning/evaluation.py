@@ -95,7 +95,9 @@ def _infer_intent(question: str) -> str:
         return "stock"
     if any(token in text for token in ("доставк", "самовывоз")):
         return "delivery"
-    if any(token in text for token in ("оплат", "карт", "безнал")):
+    if any(token in text for token in ("оплат", "безнал", "по карте", "картой")) or (
+        "карт" in text and "картридж" not in text
+    ):
         return "payment"
     return "general"
 
@@ -206,3 +208,4 @@ def run_evaluation_file(path: Path | str) -> EvaluationMetrics:
             "validator_ok": True,
         }
     return run_smoke_evaluation(cases, predictions=predictions)
+

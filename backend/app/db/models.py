@@ -11,7 +11,7 @@ class Base(DeclarativeBase):
 class MessageModel(Base):
     __tablename__ = "messages"
 
-    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    id: Mapped[str] = mapped_column(String(255), primary_key=True)
     channel: Mapped[str] = mapped_column(String(32), index=True)
     direction: Mapped[str] = mapped_column(String(16))
     customer_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
@@ -36,7 +36,7 @@ class AILogModel(Base):
     __tablename__ = "ai_logs"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    message_id: Mapped[str] = mapped_column(String(64), index=True)
+    message_id: Mapped[str] = mapped_column(String(255), index=True)
     request_text: Mapped[str] = mapped_column(Text)
     response_text: Mapped[str] = mapped_column(Text)
     validation_status: Mapped[str] = mapped_column(String(32), index=True)
@@ -63,7 +63,7 @@ class ErrorLogModel(Base):
     __tablename__ = "error_logs"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-    message_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    message_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     error_type: Mapped[str] = mapped_column(String(128))
     error_message: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
@@ -72,7 +72,7 @@ class ErrorLogModel(Base):
 class ManagerQueueModel(Base):
     __tablename__ = "manager_queue"
 
-    request_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    request_id: Mapped[str] = mapped_column(String(255), primary_key=True)
     channel: Mapped[str] = mapped_column(String(32), index=True)
     customer_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     customer_contact: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
@@ -112,7 +112,7 @@ class ConversationMessageModel(Base):
     conversation_id: Mapped[str] = mapped_column(String(64), index=True)
     role: Mapped[str] = mapped_column(String(32))
     text: Mapped[str] = mapped_column(Text)
-    message_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    message_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC), index=True)
 
 
@@ -122,7 +122,7 @@ class ProcessingLogModel(Base):
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     category: Mapped[str] = mapped_column(String(32), index=True)
     event_type: Mapped[str] = mapped_column(String(64), index=True)
-    request_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    request_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
     details_json: Mapped[str] = mapped_column(Text, default="{}")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC), index=True)
 

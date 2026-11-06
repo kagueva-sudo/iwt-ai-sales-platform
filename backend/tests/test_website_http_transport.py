@@ -369,6 +369,7 @@ async def test_composition_includes_website_provider_when_configured(monkeypatch
 
 async def test_composition_skips_website_provider_without_url(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("WEBSITE_API_URL", "")
+    monkeypatch.setenv("IWT_STORE_ENABLED", "false")
     get_settings.cache_clear()
 
     from app.services.composition import build_source_selector
@@ -377,6 +378,21 @@ async def test_composition_skips_website_provider_without_url(monkeypatch: pytes
         selector = build_source_selector()
         names = [provider.provider_name for provider in selector.providers]
         assert names == ["knowledge_base"]
+    finally:
+        get_settings.cache_clear()
+
+
+async def test_composition_uses_public_store_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("WEBSITE_API_URL", "")
+    monkeypatch.setenv("IWT_STORE_ENABLED", "true")
+    get_settings.cache_clear()
+
+    from app.services.composition import build_source_selector
+
+    try:
+        selector = build_source_selector()
+        names = [provider.provider_name for provider in selector.providers]
+        assert names == ["knowledge_base", "website_provider"]
     finally:
         get_settings.cache_clear()
 

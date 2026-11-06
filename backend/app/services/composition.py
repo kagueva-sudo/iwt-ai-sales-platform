@@ -14,12 +14,14 @@ from app.contracts.manager_queue_repository import ManagerQueueRepository
 from app.core.config import get_settings
 from app.core.constants import ChannelType
 from app.integrations.website.config import is_website_api_configured
+from app.integrations.website_store.config import is_website_store_configured
 from app.knowledge_layer.knowledge_base_provider import KnowledgeBaseProvider
 from app.knowledge_layer.search_service import KnowledgeSearchService
 from app.knowledge_layer.source_selector import SourceSelector
 from app.knowledge_layer.website_provider import WebsiteKnowledgeProvider
 from app.prompt_builder import DefaultPromptBuilder
 from app.providers.website_provider import WebsiteApiProvider
+from app.providers.website_store_provider import WebsiteStoreProvider
 from app.learning.candidate_service import CandidateService
 from app.learning.repository import LearningRepository, SqlAlchemyLearningRepository
 from app.learning.service import LearningService
@@ -68,10 +70,13 @@ def build_source_selector(providers: list[KnowledgeProvider] | None = None) -> S
     if providers is not None:
         return SourceSelector(providers=providers)
 
-    # Default: persisted knowledge + live Website API when WEBSITE_API_URL is set.
+    # Default: Knowledge Base + public iwt.ru storefront catalog.
+    # Bitrix webhook (WEBSITE_API_URL) remains optional fallback only.
     search_service = KnowledgeSearchService(_KNOWLEDGE_REPOSITORY)
     selected: list[KnowledgeProvider] = [KnowledgeBaseProvider(search_service)]
-    if is_website_api_configured():
+    if is_website_store_configured():
+        selected.append(WebsiteKnowledgeProvider(WebsiteStoreProvider()))
+    elif is_website_api_configured():
         selected.append(WebsiteKnowledgeProvider(WebsiteApiProvider()))
     return SourceSelector(providers=selected)
 

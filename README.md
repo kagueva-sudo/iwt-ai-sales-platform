@@ -61,7 +61,9 @@ Required variables:
 - `CATALOG_API_URL` - future iwt.ru catalog REST API base URL.
 - `CATALOG_API_KEY` - future catalog API key.
 - `CATALOG_TIMEOUT` - catalog API timeout in seconds.
-- `WEBSITE_API_URL` - Bitrix inbound webhook base, e.g. `https://iwt.ru/rest/1/<webhook>`.
+- `IWT_STORE_BASE_URL` - public storefront base (default `https://www.iwt.ru`); HTML catalog search, no Bitrix needed.
+- `IWT_STORE_ENABLED` - enable/disable public catalog provider (default `true`).
+- `WEBSITE_API_URL` - optional Bitrix inbound webhook fallback, e.g. `https://iwt.ru/rest/1/<webhook>`.
 - `WEBSITE_API_KEY` - unused for Bitrix webhook auth (token is in the URL).
 - `WEBSITE_API_TIMEOUT` - website API timeout in seconds.
 - `WEBSITE_API_AUTH_MODE` - `none` for Bitrix webhook; also supports `bearer` / `api_key`.
@@ -84,7 +86,7 @@ Webhook endpoint: `POST /channels/max/webhook`
 2. **Через Go bridge** — polling в `bot_iwt_max/cmd/platform-bridge` форвардит события в Python;
    при `PLATFORM_SENDS_REPLIES=true` ответы отправляет Python (нужен `MAX_BOT_TOKEN` на стороне платформы).
 
-Товары/цены — Bitrix (`WEBSITE_API_URL`), FAQ/доставка/оплата — Knowledge Base.
+Товары/цены — публичный каталог iwt.ru (`IWT_STORE_*`), FAQ/доставка/оплата — Knowledge Base. Bitrix webhook опционален.
 
 ### WhatsApp channel
 
@@ -95,6 +97,9 @@ Endpoints:
 
 Задайте `WHATSAPP_ACCESS_TOKEN` и `WHATSAPP_PHONE_NUMBER_ID` для исходящих ответов через Graph API.
 Status callbacks без текста принимаются как `EVENT_RECEIVED` без запуска pipeline.
+
+Пошаговый запуск (Timeweb HTTPS + Meta): см. [`WHATSAPP_SETUP.md`](WHATSAPP_SETUP.md).
+Проверка `.env`: `python backend/scripts/check_whatsapp.py`.
 
 ## Learning Loop v1
 

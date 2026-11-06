@@ -1,5 +1,5 @@
 from app.contracts.prompt_builder import PromptBuilder
-from app.domain.conversations import ConversationContext
+from app.domain.conversations import ConversationContext, ConversationMessage
 from app.domain.messages import Message
 from app.domain.prompt_context import PromptContext
 from app.domain.prompts import PromptMetadata
@@ -22,7 +22,10 @@ class DefaultPromptBuilder(PromptBuilder):
         available_tools: list[ToolDescription],
     ) -> PromptContext:
         sources_block = self._format_sources(verified_sources)
+        history_block = self._format_history(conversation.recent_messages, current_text=message.text)
         system_prompt = f"{SYSTEM_PROMPT_TEMPLATE}\n\n{format_verified_sources(sources_block)}"
+        if history_block:
+            system_prompt = f"{system_prompt}\n\n{history_block}"
 
         return PromptContext(
             system_prompt=system_prompt,
@@ -57,4 +60,27 @@ class DefaultPromptBuilder(PromptBuilder):
                 f"- [{source.source_type}/{source.source_id}] {source.title}: "
                 f"{source.content} (confirmed_fields={confirmed or 'none'})"
             )
+        return "\n".join(lines)
+
+    def _format_history(
+        self,
+        recent_messages: list[ConversationMessage],
+        *,
+        current_text: str,
+    ) -> str:
+        filtered = [
+            item
+            for item in recent_messages
+            if not (
+                item.role in {"user", "customer", "client"}
+                and item.text.strip() == current_text.strip()
+            )
+        ]
+        recent = filtered[-6:]
+        if not recent:
+            return ""
+        lines = ["Recent conversation:"]
+        for item in recent:
+            role = "client" if item.role in {"user", "customer", "client"} else "assistant"
+            lines.append(f"- {role}: {item.text}")
         return "\n".join(lines)

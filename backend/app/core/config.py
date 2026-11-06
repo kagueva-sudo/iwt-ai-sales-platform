@@ -24,6 +24,11 @@ class Settings(BaseSettings):
     website_api_auth_mode: str = "none"
     website_catalog_iblock_id: int = 86
 
+    iwt_store_enabled: bool = True
+    iwt_store_base_url: str = "https://www.iwt.ru"
+    iwt_store_timeout: float = 15.0
+    iwt_store_max_products: int = 8
+
     max_bot_token: str = ""
     max_api_base_url: str = "https://platform-api2.max.ru"
     max_api_timeout: float = 10.0

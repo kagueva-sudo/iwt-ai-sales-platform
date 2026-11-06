@@ -1,7 +1,7 @@
 from app.ai_core.core import AICore
 from app.contracts.logging_service import LoggingService
 from app.contracts.prompt_builder import PromptBuilder
-from app.domain.conversations import ConversationMessage
+from app.domain.conversations import ConversationContext, ConversationMessage
 from app.domain.messages import Message
 from app.domain.pipeline_events import PipelineEventType
 from app.domain.processing import ProcessingDecision, ProcessingResult
@@ -40,13 +40,15 @@ class MessagePipelineService:
         )
 
         session, conversation = await self.conversation_state.prepare_for_message(message)
-        selection = await self.source_selector.select_sources(message.text)
+        search_query = self._expand_search_query(message.text, conversation)
+        selection = await self.source_selector.select_sources(search_query)
         await self._log(
             PipelineEventType.SOURCES_SELECTED,
             {
                 "request_id": request_id,
                 "sources_count": str(len(selection.sources)),
                 "source_ids": ",".join(source.source_id for source in selection.sources),
+                "search_query": search_query[:200],
             },
         )
 
@@ -63,6 +65,7 @@ class MessagePipelineService:
                 "request_id": request_id,
                 "prompt_type": prompt_context.metadata.prompt_type,
                 "has_sources": str(bool(prompt_context.verified_sources)).lower(),
+                "history_messages": str(len(prompt_context.recent_messages)),
             },
         )
 
@@ -85,6 +88,30 @@ class MessagePipelineService:
         result.metadata.setdefault("sources_count", str(len(selection.sources)))
         return result
 
+    def _expand_search_query(self, text: str, conversation: ConversationContext) -> str:
+        """Keep short follow-ups searchable using recent client context."""
+        stripped = (text or "").strip()
+        if not stripped:
+            return stripped
+        words = stripped.split()
+        if len(words) > 6:
+            return stripped
+        prior_client = [
+            item.text.strip()
+            for item in conversation.recent_messages
+            if item.role in {"user", "customer", "client"} and item.text.strip()
+        ]
+        if not prior_client:
+            return stripped
+        # Avoid duplicating the same current message already appended into history.
+        prior = [msg for msg in prior_client if msg != stripped]
+        if not prior:
+            return stripped
+        last = prior[-1]
+        if any(token in last.lower() for token in ("картридж", "ноутбук", "принтер", "товар", "компьютер")):
+            return f"{last} {stripped}"
+        return stripped
+
     async def _log_ai_core_outcome(
         self,
         request_id: str,
@@ -99,6 +126,7 @@ class MessagePipelineService:
                     "request_id": request_id,
                     "status": "error" if result.decision == ProcessingDecision.ERROR else "completed",
                     "errors": "|".join(result.errors),
+                    "intent": result.metadata.get("intent", ""),
                 },
             )
 
@@ -110,6 +138,7 @@ class MessagePipelineService:
                     "decision": result.decision.value,
                     "reason": result.metadata.get("reason", ""),
                     "handoff_reason": result.handoff_reason.value if result.handoff_reason else "",
+                    "intent": result.metadata.get("intent", ""),
                 },
             )
         elif not had_sources:
@@ -120,6 +149,7 @@ class MessagePipelineService:
                     "decision": result.decision.value,
                     "reason": result.metadata.get("reason", "no_verified_sources"),
                     "handoff_reason": result.handoff_reason.value if result.handoff_reason else "",
+                    "intent": result.metadata.get("intent", ""),
                 },
             )
 
@@ -127,3 +157,4 @@ class MessagePipelineService:
         if self.logging_service is None:
             return
         await self.logging_service.log_audit(event_type.value, details, category="pipeline")
+
