@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Входящие — IWT AI Sales</title>
+    <link rel="stylesheet" href="/static/inbox/styles.css?v=2" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark">IWT</span>
+          <div>
+            <h1>Входящие</h1>
+            <p>Заявки, которые AI передал менеджеру</p>
+          </div>
+        </div>
+        <button type="button" id="refresh-btn" class="btn ghost">Обновить</button>
+      </header>
+
+      <nav class="filters" id="filters" aria-label="Фильтр по статусу">
+        <button type="button" class="filter active" data-status="">Все</button>
+        <button type="button" class="filter" data-status="new">Новые</button>
+        <button type="button" class="filter" data-status="in_progress">В работе</button>
+        <button type="button" class="filter" data-status="done">Готово</button>
+        <button type="button" class="filter" data-status="cancelled">Отменены</button>
+      </nav>
+
+      <main class="workspace">
+        <aside class="list-panel">
+          <div id="list-meta" class="list-meta">Загрузка…</div>
+          <div id="queue-list" class="queue-list" role="list"></div>
+        </aside>
+
+        <section class="detail-panel" id="detail-panel">
+          <div class="empty-state" id="empty-state">
+            <h2>Выберите заявку</h2>
+            <p>Слева — список. Справа откроется переписка и действия.</p>
+          </div>
+
+          <article class="detail hidden" id="detail">
+            <header class="detail-head">
+              <div>
+                <div class="detail-title-row">
+                  <h2 id="detail-title">Клиент</h2>
+                  <span class="status-pill" id="detail-status"></span>
+                </div>
+                <p class="detail-sub" id="detail-sub"></p>
+              </div>
+              <div class="detail-actions" id="detail-actions"></div>
+            </header>
+
+            <div class="detail-grid">
+              <div class="card">
+                <h3>О заявке</h3>
+                <dl class="meta">
+                  <div><dt>Канал</dt><dd id="meta-channel"></dd></div>
+                  <div><dt>Контакт</dt><dd id="meta-contact"></dd></div>
+                  <div><dt>Причина</dt><dd id="meta-reason"></dd></div>
+                  <div><dt>Создано</dt><dd id="meta-created"></dd></div>
+                  <div><dt>ID</dt><dd id="meta-id" class="mono"></dd></div>
+                </dl>
+                <div id="open-chat-wrap" class="open-chat-wrap"></div>
+              </div>
+
+              <div class="card thread-card">
+                <h3>Переписка</h3>
+                <div id="thread" class="thread"></div>
+                <div class="ai-block">
+                  <h4>Ответ AI перед передачей</h4>
+                  <p id="ai-response" class="ai-response"></p>
+                </div>
+              </div>
+            </div>
+
+            <footer class="done-box" id="done-box">
+              <label for="manager-answer">Ответ менеджера (для обучения, необязательно)</label>
+              <textarea
+                id="manager-answer"
+                rows="3"
+                placeholder="Кратко: что ответили клиенту"
+              ></textarea>
+              <div class="done-actions">
+                <button type="button" id="take-btn" class="btn primary">Взять в работу</button>
+                <button type="button" id="done-btn" class="btn success">Готово</button>
+                <button type="button" id="cancel-btn" class="btn ghost">Отменить</button>
+              </div>
+              <p class="hint" id="action-hint"></p>
+            </footer>
+          </article>
+        </section>
+      </main>
+    </div>
+    <script src="/static/inbox/inbox.js?v=2"></script>
+  </body>
+</html>

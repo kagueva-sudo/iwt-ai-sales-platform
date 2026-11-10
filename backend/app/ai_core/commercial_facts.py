@@ -20,18 +20,29 @@ def normalize_for_intent(text: str) -> str:
 
 def detect_requested_commercial_facts(text: str) -> set[str]:
     lowered = normalize_for_intent(text)
+    # "безналичной оплатой" contains "налич" — do not treat as stock availability.
+    stock_haystack = re.sub(r"безналич\w*", " ", lowered)
     fact_keywords: dict[str, tuple[str, ...]] = {
         "price": ("цена", "стоимость", "сколько стоит", "прайс"),
         "stock": ("налич", "остат", "на складе", "в продаже", "в наличии"),
         "characteristics": ("характерист", "параметр", "мощность", "размер", "габарит"),
         "delivery_terms": ("срок", "поставка", "доставка", "когда будет"),
-        "warranty_terms": ("гарант", "возврат", "обмен", "сервис", "недостат", "претенз"),
+        # Do not use bare "сервис" — it collides with «сервисный центр» hours/contacts.
+        "warranty_terms": (
+            "гарант",
+            "возврат",
+            "обмен",
+            "недостат",
+            "претенз",
+            "по гарантии",
+            "гарантийный",
+        ),
     }
-    found = {
-        fact
-        for fact, keywords in fact_keywords.items()
-        if any(keyword in lowered for keyword in keywords)
-    }
+    found: set[str] = set()
+    for fact, keywords in fact_keywords.items():
+        haystack = stock_haystack if fact == "stock" else lowered
+        if any(keyword in haystack for keyword in keywords):
+            found.add(fact)
     if _looks_like_payment(lowered):
         found.add("payment_terms")
     return found

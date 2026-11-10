@@ -119,9 +119,21 @@ Endpoints (внутренний MVP API без RBAC):
 - Для `PRICE_UNKNOWN` / `AVAILABILITY_UNKNOWN` создаётся только событие, без кандидата на FAQ-цену.
 - Approve публикует FAQ (`category=learning`) **без** `price` / `stock_qty` / `delivery_terms` в `confirmed_fields`.
 - Dynamic commercial facts (цена/остаток) — только из Bitrix / live API, не из старых QA.
-- Датасеты: `knowledge/learning/customer_qa.jsonl`, `knowledge/learning/evaluation_dataset.jsonl` (не в system prompt).
+- Датасеты: `knowledge/learning/customer_qa.jsonl` (банк формулировок), `knowledge/learning/evaluation_dataset.jsonl` (smoke-проверки), плюс `knowledge/faq_phrases.json` — дополнительные фразы в KB для поиска. Описание слоёв: `knowledge/learning/README.md`. Не класть целиком в system prompt.
 
 При `PATCH /manager-queue/{id}/status` со `status=done` можно передать опциональное `manager_answer` — оно попадёт в pending-кандидата.
+
+## Manager Inbox (Входящие)
+
+Веб-экран для менеджеров поверх `/manager-queue` (без отдельного фронтенд-билда):
+
+- URL: `http://localhost:8000/inbox` (в проде: `https://api.iwt.ru/inbox`)
+- Список заявок, фильтр по статусу, карточка с перепиской
+- Действия: **Взять в работу** / **Готово** / **Отменить**
+- Для WhatsApp — кнопка открыть чат клиента (`wa.me`)
+- При «Готово» можно сохранить текст ответа менеджера (`manager_answer`) для Learning Loop
+
+Пока без логина (как и сам Manager Queue API). Не публикуйте inbox наружу без защиты сети/VPN.
 
 ## Ubuntu 24.04 Deployment
 

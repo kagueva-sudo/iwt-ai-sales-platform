@@ -94,6 +94,33 @@ async def test_greetings_do_not_fallback_or_handoff(text: str) -> None:
     assert result.handoff_reason is None
 
 
+async def test_greeting_still_greets_when_dialog_has_history() -> None:
+    """Regression: mid-dialog «Привет» must not become «Чем ещё могу помочь?»."""
+    pipeline, _ = _build_pipeline()
+    customer = "u-greet-history"
+    await pipeline.process(
+        Message(
+            text="У вас есть в продаже ибп?",
+            channel=ChannelType.MAX,
+            direction=MessageDirection.INBOUND,
+            customer_id=customer,
+        )
+    )
+    result = await pipeline.process(
+        Message(
+            text="Привет",
+            channel=ChannelType.MAX,
+            direction=MessageDirection.INBOUND,
+            customer_id=customer,
+        )
+    )
+    assert result.decision == ProcessingDecision.RESPOND
+    assert result.response_text == GREETING_MESSAGE
+    assert "Здравствуйте" in (result.response_text or "")
+    assert result.response_text != "Чем ещё могу помочь?"
+    assert result.metadata.get("reason") == "conversational_greeting"
+
+
 async def test_thanks_gets_natural_reply() -> None:
     pipeline, _ = _build_pipeline()
     result = await pipeline.process(
@@ -204,6 +231,90 @@ async def test_payment_question_uses_kb() -> None:
     )
     assert result.decision == ProcessingDecision.RESPOND
     assert "оплат" in (result.response_text or "").lower()
+
+
+def test_cashless_word_is_not_stock_fact() -> None:
+    assert detect_requested_commercial_facts("Вы работаете безналичной оплатой?") == {"payment_terms"}
+    assert "stock" not in detect_requested_commercial_facts("безналичный расчёт")
+    assert "stock" in detect_requested_commercial_facts("Есть в наличии?")
+
+
+async def test_service_center_hours_not_services_catalog() -> None:
+    """«до скольки работает сервис центр» → режим, не список услуг."""
+    services = VerifiedSource(
+        source_id="services-overview",
+        source_type="knowledge_base",
+        title="Сервис, ремонт и настройка",
+        content="Сервис IWT:\n- Ремонт и обслуживание — да.",
+        metadata={"confirmed_fields": "content"},
+    )
+    hours = VerifiedSource(
+        source_id="hours-service",
+        source_type="knowledge_base",
+        title="Режим работы сервисного центра IWT",
+        content=(
+            "Сервисный центр IWT (Махачкала, ул. Азиза Алиева, 17А):\n"
+            "Пн–Пт 9:00–19:00, Сб 10:00–17:00, Вс — выходной.\n\n"
+            "Контакты:\n- 8 (8722) 56-06-06 доб. 2"
+        ),
+        metadata={"confirmed_fields": "content"},
+    )
+    pipeline, _ = _build_pipeline(sources=[services, hours])
+    result = await pipeline.process(
+        Message(
+            text="до скольки работает сервис центр?",
+            channel=ChannelType.MAX,
+            direction=MessageDirection.INBOUND,
+            customer_id="u-svc-hours",
+        )
+    )
+    assert result.decision == ProcessingDecision.RESPOND
+    assert "9:00" in (result.response_text or "")
+    assert "Ремонт и обслуживание — да" not in (result.response_text or "")
+    assert result.handoff_reason is None
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Вы работаете безналичной оплатой?",
+        "Вы работаете по безналу?",
+        "Работаете по безналу?",
+    ],
+)
+async def test_cashless_payment_not_confused_with_hours(text: str) -> None:
+    """Regression: «работаете по безналу» must not return working hours."""
+    hours = VerifiedSource(
+        source_id="hours-full",
+        source_type="knowledge_base",
+        title="Режим работы",
+        content="Режим работы IWT: Пн–Пт 9:00–19:00.",
+        metadata={"confirmed_fields": "content"},
+    )
+    payment = VerifiedSource(
+        source_id="payment-overview",
+        source_type="knowledge_base",
+        title="Способы оплаты",
+        content=(
+            "Способы оплаты: наличные, карта, безналичный расчёт для юрлиц. "
+            "https://www.iwt.ru/payments/"
+        ),
+        metadata={"confirmed_fields": "content,payment_terms"},
+    )
+    pipeline, _ = _build_pipeline(sources=[hours, payment])
+    result = await pipeline.process(
+        Message(
+            text=text,
+            channel=ChannelType.MAX,
+            direction=MessageDirection.INBOUND,
+            customer_id="u-pay-hours",
+        )
+    )
+    assert result.decision == ProcessingDecision.RESPOND
+    assert result.metadata.get("intent") == "payment_question"
+    assert "безнал" in (result.response_text or "").lower() or "оплат" in (result.response_text or "").lower()
+    assert "9:00" not in (result.response_text or "")
+    assert result.handoff_reason is None
 
 
 async def test_vague_followup_uses_history_not_blind_menu() -> None:

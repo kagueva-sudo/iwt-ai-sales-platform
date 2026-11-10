@@ -1,0 +1,164 @@
+[
+  {
+    "id": "phrase-pay-cash",
+    "title": "Можно оплатить наличными при получении?",
+    "item_type": "faq",
+    "tags": ["наличные", "при получении", "курьеру", "оплата", "как оплатить"],
+    "source": "payment-overview",
+    "confirmed_fields": ["id", "title", "content", "category", "item_type", "tags", "payment_terms"],
+    "content": "Да. Выберите в корзине «Наличные при получении». Оплата в магазине или курьеру; при получении проверьте комплектацию и чек. Подробнее: https://www.iwt.ru/payments/"
+  },
+  {
+    "id": "phrase-pay-card",
+    "title": "Оплата банковской картой на сайте",
+    "item_type": "faq",
+    "tags": ["карта", "сбербанк", "онлайн оплата", "банковской картой"],
+    "source": "payment-overview",
+    "confirmed_fields": ["id", "title", "content", "category", "item_type", "tags", "payment_terms"],
+    "content": "Да, картой через ПАО Сбербанк: после оформления нажмите «Оплата банковской картой» и введите данные карты. https://www.iwt.ru/payments/"
+  },
+  {
+    "id": "phrase-del-free",
+    "title": "Когда доставка по городу бесплатная?",
+    "item_type": "faq",
+    "tags": ["бесплатная доставка", "от 5000", "махачкала", "каспийск", "курьер"],
+    "source": "delivery-courier",
+    "confirmed_fields": ["id", "title", "content", "category", "item_type", "tags", "delivery_terms"],
+    "content": "Курьерская доставка по Махачкале и Каспийску бесплатна для оплаченного товара от 5 000 руб. при весе до 10 кг. Если сумма меньше — доставка от 300 руб. https://www.iwt.ru/delivery/"
+  },
+  {
+    "id": "phrase-del-pickup-wait",
+    "title": "Сколько дней хранится забронированный товар?",
+    "item_type": "faq",
+    "tags": ["бронь", "забронированный", "самовывоз", "сколько дней", "ожидает"],
+    "source": "delivery-pickup",
+    "confirmed_fields": ["id", "title", "content", "category", "item_type", "tags", "delivery_terms"],
+    "content": "Забронированный товар ожидает покупателя в пункте выдачи в течение двух рабочих дней. Адреса: Махачкала, Азиза Алиева 17А; Каспийск, Ленина 6."
+  },
+  {
+    "id": "phrase-del-regions",
+    "title": "Отправляете в другие города России?",
+    "item_type": "faq",
+    "tags": ["регионы", "другие города", "dpd", "boxberry", "почта россии", "доставка"],
+    "source": "delivery-regions",
+    "confirmed_fields": ["id", "title", "content", "category", "item_type", "tags", "delivery_terms"],
+    "content": "Да, в регионы РФ — по тарифам DPD, Boxberry и Почта России. Ориентиры на https://www.iwt.ru/delivery/"
+  },
+  {
+    "id": "phrase-war-14",
+    "title": "Можно обменять товар в течение двух недель?",
+    "item_type": "faq",
+    "tags": ["обмен", "14 дней", "две недели", "надлежащее качество"],
+    "source": "warranty-return-quality",
+    "confirmed_fields": ["id", "title", "content", "category", "item_type", "tags", "warranty_terms"],
+    "content": "Товар надлежащего качества можно обменять на аналогичный в течение 14 дней (не считая дня покупки). Технически сложные товары надлежащего качества возврату/обмену не подлежат. Нужны заявление, чек и полная комплектация. https://www.iwt.ru/company/vozvrat/"
+  },
+  {
+    "id": "phrase-war-online7",
+    "title": "Срок отказа при покупке через интернет",
+    "item_type": "faq",
+    "tags": ["дистанционная", "интернет", "7 дней", "отказ", "онлайн заказ"],
+    "source": "warranty-return-quality",
+    "confirmed_fields": ["id", "title", "content", "category", "item_type", "tags", "warranty_terms"],
+    "content": "При дистанционной покупке можно отказаться до передачи товара и в течение 7 дней после передачи (срок может продлеваться, если порядок возврата не сообщили письменно при доставке)."
+  },
+  {
+    "id": "phrase-buyback-slang",
+    "title": "Берете бэушные ноутбуки?",
+    "item_type": "faq",
+    "tags": ["бэушные", "б у", "бу", "скупка", "выкуп", "trade-in", "трейд"],
+    "source": "faq-no-buyback",
+    "confirmed_fields": ["id", "title", "content", "category", "item_type", "tags"],
+    "content": "Нет. IWT не скупает и не выкупает технику, не принимает б/у в зачёт и не делает trade-in. Продаём новую технику на https://www.iwt.ru/"
+  },
+  {
+    "id": "phrase-hours-sat-mk",
+    "title": "График работы в субботу Махачкала",
+    "item_type": "faq",
+    "tags": ["суббота", "махачкала", "график", "до скольки", "часы"],
+    "source": "hours-full",
+    "confirmed_fields": ["id", "title", "content", "category", "item_type", "tags"],
+    "content": "Махачкала, ул. Азиза Алиева, 17А: в субботу с 10:00 до 17:00. Воскресенье — выходной."
+  },
+  {
+    "id": "phrase-hours-no-lunch",
+    "title": "Работаете без обеда?",
+    "item_type": "faq",
+    "tags": ["без обеда", "без перерыва", "обеденный перерыв"],
+    "source": "hours-lunch",
+    "confirmed_fields": ["id", "title", "content", "category", "item_type", "tags"],
+    "content": "Да, работаем без перерыва на обед."
+  },
+  {
+    "id": "phrase-contacts-wa",
+    "title": "Номер WhatsApp IWT",
+    "item_type": "faq",
+    "tags": ["whatsapp", "ватсап", "вацап", "мессенджер", "написать"],
+    "source": "company-contacts",
+    "confirmed_fields": ["id", "title", "content", "category", "item_type", "tags"],
+    "content": "WhatsApp: +79034770088. Также телефон +7 (8722) 56-06-06, email info@iwt.ru."
+  },
+  {
+    "id": "phrase-shops-mk",
+    "title": "Адрес магазина IWT в Махачкале",
+    "item_type": "faq",
+    "tags": ["махачкала", "алиева", "адрес", "где магазин", "как проехать"],
+    "source": "company-shops",
+    "confirmed_fields": ["id", "title", "content", "category", "item_type", "tags"],
+    "content": "Махачкала, ул. Азиза Алиева, 17А. Телефоны: +7 (8722) 56-06-06, +7 903 477-00-88. https://www.iwt.ru/shops/"
+  },
+  {
+    "id": "phrase-shops-kaspiysk",
+    "title": "Адрес магазина IWT в Каспийске",
+    "item_type": "faq",
+    "tags": ["каспийск", "ленина", "адрес", "магазин"],
+    "source": "company-shops",
+    "confirmed_fields": ["id", "title", "content", "category", "item_type", "tags"],
+    "content": "Каспийск, ул. Ленина, д. 6. Телефоны: +7 (8722) 56-06-06, +7 988 293-97-44."
+  },
+  {
+    "id": "phrase-corp-b2b",
+    "title": "Покупка для организации и ИП",
+    "item_type": "faq",
+    "tags": ["организация", "ип", "безнал", "счёт", "договор", "опт", "b2b"],
+    "source": "corporate-overview",
+    "confirmed_fields": ["id", "title", "content", "category", "item_type", "tags"],
+    "content": "Да, работаем с юрлицами и ИП: закупка из ассортимента сайта, персональный менеджер. 8 (8722) 56-06-06, info@iwt.ru. https://www.iwt.ru/company/korporativnym-klientam/"
+  },
+  {
+    "id": "phrase-order-phone",
+    "title": "Заказ по телефону IWT",
+    "item_type": "faq",
+    "tags": ["заказ по телефону", "позвонить", "оформить", "8 8722"],
+    "source": "faq-order-howto",
+    "confirmed_fields": ["id", "title", "content", "category", "item_type", "tags"],
+    "content": "Заказ по телефону: 8 (8722) 56-06-06. Сообщите название или артикул товара. Также можно оформить на сайте iwt.ru."
+  },
+  {
+    "id": "phrase-select-budget",
+    "title": "Подбор ноутбука под бюджет и задачи",
+    "item_type": "faq",
+    "tags": ["подбор", "бюджет", "учёба", "игры", "дизайн", "какой ноутбук"],
+    "source": "faq-pc-selection",
+    "confirmed_fields": ["id", "title", "content", "category", "item_type", "tags"],
+    "content": "Напишите задачи (работа, учёба, игры, дизайн), бюджет и какая техника уже есть — специалист поможет подобрать. Сборка ПК на заказ уточняется у менеджера."
+  },
+  {
+    "id": "phrase-svc-repair",
+    "title": "Ремонт и настройка компьютеров IWT",
+    "item_type": "faq",
+    "tags": ["ремонт", "починить", "настройка", "установка windows", "сервис"],
+    "source": "services-overview",
+    "confirmed_fields": ["id", "title", "content", "category", "item_type", "tags"],
+    "content": "Ремонт, обслуживание, установка и настройка ПО и техники — да. Возможность ремонта конкретного устройства уточняйте: 8 (8722) 56-06-06 доб. 2, сервисный центр 8 928 058-06-06, info@iwt.ru."
+  },
+  {
+    "id": "phrase-price-where",
+    "title": "Где посмотреть актуальную цену и наличие?",
+    "item_type": "faq",
+    "tags": ["цена", "наличие", "актуально", "сайт", "стоимость", "есть ли"],
+    "source": "faq-stock-price",
+    "confirmed_fields": ["id", "title", "content", "category", "item_type", "tags"],
+    "content": "Актуальные цены и наличие — на сайте https://www.iwt.ru/ или у менеджера: +7 (8722) 56-06-06, WhatsApp +79034770088, info@iwt.ru. Бот не называет цену и остаток без подтверждённых данных каталога."
+  }
+]

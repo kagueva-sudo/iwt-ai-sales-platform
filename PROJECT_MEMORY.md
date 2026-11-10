@@ -1,5 +1,32 @@
 # Project Memory
 
+## 2026-11-06 — Expanded learning / FAQ phrase bank
+
+Статус: принято.
+
+Чтобы меньше зависеть от Learning Loop на старте:
+
+- `knowledge/learning/customer_qa.jsonl` — расширенный банк Q&A (парафразы + static answers; price/stock без цифр).
+- `knowledge/learning/evaluation_dataset.jsonl` — расширенный smoke eval.
+- `knowledge/faq_phrases.json` — поисковые формулировки в KB (seed вместе с остальным knowledge).
+- `knowledge/learning/README.md` — как устроены слои.
+
+Цены/остатки по-прежнему не публикуются как статический FAQ с цифрами.
+
+## 2026-11-06 — Manager Inbox UI (Входящие)
+
+Статус: принято.
+
+Простой веб-UI для менеджеров без отдельного SPA-сборщика:
+
+- `GET /inbox` → `backend/app/static/inbox/`
+- Читает/обновляет существующий `/manager-queue` API
+- Статусы: new → in_progress → done / cancelled
+- WhatsApp: deep-link `wa.me` из контакта заявки
+- AI Core не затронут; Admin Panel / RBAC по-прежнему вне MVP
+
+Решение по продукту: общий чат WhatsApp менеджеров — только уведомление; учёт статусов — в Inbox.
+
 ## 2026-08-11 — Learning Loop v1
 
 Статус: принято.

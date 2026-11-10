@@ -1,5 +1,28 @@
-{"id": "eval-1", "question": "Какие способы оплаты?", "expected_intent": "payment", "expected_handoff": false, "expected_sources": [], "notes": "static FAQ"}
-{"id": "eval-2", "question": "Есть самовывоз?", "expected_intent": "delivery", "expected_handoff": false, "notes": "static FAQ"}
-{"id": "eval-3", "question": "Сколько стоит ноутбук Lenovo?", "expected_intent": "price", "expected_handoff": true, "allow_price_without_live": false, "notes": "must not invent price"}
-{"id": "eval-4", "question": "Есть ли в наличии насос X?", "expected_intent": "stock", "expected_handoff": true, "allow_price_without_live": false, "notes": "stock needs live source"}
-{"id": "eval-5", "question": "Какая гарантия на серверы?", "expected_intent": "general", "expected_handoff": false, "notes": "may resolve from KB"}
+{"id": "eval-pay-1", "question": "Какие способы оплаты?", "expected_intent": "payment", "expected_handoff": false, "notes": "static KB"}
+{"id": "eval-pay-2", "question": "Можно картой на сайте?", "expected_intent": "payment", "expected_handoff": false, "notes": "static KB"}
+{"id": "eval-del-1", "question": "Есть самовывоз?", "expected_intent": "delivery", "expected_handoff": false, "notes": "static KB"}
+{"id": "eval-del-2", "question": "Какие условия курьерской доставки по Махачкале?", "expected_intent": "delivery", "expected_handoff": false, "notes": "static delivery terms — not product price"}
+{"id": "eval-del-3", "question": "Отправите в другой регион Boxberry?", "expected_intent": "delivery", "expected_handoff": false, "notes": "static KB"}
+{"id": "eval-war-1", "question": "Как вернуть товар?", "expected_intent": "general", "expected_handoff": false, "notes": "warranty KB; intent smoke maps to general"}
+{"id": "eval-war-2", "question": "Есть гарантия на ноутбуки?", "expected_intent": "general", "expected_handoff": false, "notes": "static KB"}
+{"id": "eval-buy-1", "question": "Скупаете б/у?", "expected_intent": "general", "expected_handoff": false, "notes": "buyback FAQ"}
+{"id": "eval-hrs-1", "question": "Работаете в воскресенье?", "expected_intent": "general", "expected_handoff": false, "notes": "hours FAQ"}
+{"id": "eval-con-1", "question": "Какой телефон?", "expected_intent": "general", "expected_handoff": false, "notes": "contacts"}
+{"id": "eval-shp-1", "question": "Адрес магазина в Махачкале?", "expected_intent": "general", "expected_handoff": false, "notes": "shops"}
+{"id": "eval-corp-1", "question": "Работаете с юрлицами?", "expected_intent": "general", "expected_handoff": false, "notes": "corporate FAQ"}
+{"id": "eval-svc-1", "question": "Делаете ремонт ноутбуков?", "expected_intent": "general", "expected_handoff": false, "notes": "services FAQ"}
+{"id": "eval-asc-1", "question": "Какие товары продаёте?", "expected_intent": "general", "expected_handoff": false, "notes": "assortment"}
+{"id": "eval-ord-1", "question": "Как оформить заказ?", "expected_intent": "general", "expected_handoff": false, "notes": "order FAQ"}
+{"id": "eval-price-1", "question": "Сколько стоит ноутбук?", "expected_intent": "price", "expected_handoff": true, "allow_price_without_live": false, "notes": "must not invent price"}
+{"id": "eval-price-2", "question": "Сколько стоит ноутбук Lenovo?", "expected_intent": "price", "expected_handoff": true, "allow_price_without_live": false, "notes": "must not invent price"}
+{"id": "eval-price-3", "question": "Цена на видеокарту RTX?", "expected_intent": "price", "expected_handoff": true, "allow_price_without_live": false, "notes": "dynamic"}
+{"id": "eval-stock-1", "question": "Есть ли в наличии насос X?", "expected_intent": "stock", "expected_handoff": true, "allow_price_without_live": false, "notes": "stock needs live"}
+{"id": "eval-stock-2", "question": "Есть в наличии MacBook Air?", "expected_intent": "stock", "expected_handoff": true, "allow_price_without_live": false, "notes": "stock needs live"}
+{"id": "eval-stock-3", "question": "Остаток по артикулу 998877?", "expected_intent": "stock", "expected_handoff": true, "allow_price_without_live": false, "notes": "stock needs live"}
+{"id": "eval-hand-1", "question": "Нужна скидка 15 процентов", "expected_intent": "general", "notes": "full pipeline → handoff discount; smoke does not assert handoff"}
+{"id": "eval-hand-2", "question": "Сделайте КП для администрации", "expected_intent": "general", "notes": "full pipeline → handoff commercial_offer"}
+{"id": "eval-hand-3", "question": "Претензия: заказ не доставили", "expected_intent": "general", "notes": "full pipeline → handoff complaint"}
+{"id": "eval-hand-4", "question": "Позовите менеджера пожалуйста", "expected_intent": "general", "notes": "full pipeline → handoff client_request_manager"}
+{"id": "eval-mix-1", "question": "Есть самовывоз и оплата картой?", "expected_intent": "delivery", "expected_handoff": false, "notes": "delivery keyword wins smoke intent; answer may cover both"}
+{"id": "eval-mix-2", "question": "Добрый день, скупаете ноутбуки б у?", "expected_intent": "general", "expected_handoff": false, "notes": "colloquial buyback"}
+{"id": "eval-gar-1", "question": "Какая гарантия на серверы?", "expected_intent": "general", "expected_handoff": false, "notes": "may resolve from KB without inventing months"}

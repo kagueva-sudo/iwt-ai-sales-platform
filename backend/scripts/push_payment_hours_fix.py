@@ -1,0 +1,46 @@
+"""Upload payment-vs-hours fix + payment KB. Password via IWT_PASS_FILE."""
+
+import os
+from pathlib import Path
+
+import paramiko
+
+ROOT = Path(__file__).resolve().parents[2]
+password = Path(os.environ["IWT_PASS_FILE"]).read_text(encoding="utf-8").strip()
+ssh = paramiko.SSHClient()
+ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+ssh.connect(
+    "72.56.85.214",
+    username="root",
+    password=password,
+    timeout=30,
+    allow_agent=False,
+    look_for_keys=False,
+)
+sftp = ssh.open_sftp()
+files = [
+    (
+        ROOT / "backend/app/ai_core/core.py",
+        "/opt/iwt-ai-sales-platform/backend/app/ai_core/core.py",
+    ),
+    (
+        ROOT / "backend/app/ai_core/commercial_facts.py",
+        "/opt/iwt-ai-sales-platform/backend/app/ai_core/commercial_facts.py",
+    ),
+    (
+        ROOT / "knowledge/payment.json",
+        "/opt/iwt-ai-sales-platform/knowledge/payment.json",
+    ),
+]
+for local, remote in files:
+    sftp.put(str(local), remote)
+    print("uploaded", remote)
+sftp.close()
+cmd = "cd /opt/iwt-ai-sales-platform && docker compose -f docker-compose.prod.yml up -d --build api"
+_, stdout, stderr = ssh.exec_command(cmd, timeout=420)
+print(stdout.read().decode("utf-8", "replace")[-2500:])
+err = stderr.read().decode("utf-8", "replace")
+if err.strip():
+    print(err[-2000:])
+ssh.close()
+print("deployed")

@@ -4,13 +4,19 @@ from app.ai_core.commercial_facts import detect_requested_commercial_facts, norm
 from app.ai_core.llm_provider import LLMProvider
 from app.ai_core.prompts import (
     CARTRIDGE_CLARIFY_MESSAGE,
+    CARTRIDGE_REFILL_MESSAGE,
     CATEGORY_PRICE_NARROWING_MESSAGE_TEMPLATE,
+    CONTACTS_MESSAGE,
     GREETING_MESSAGE,
     NO_BUYBACK_MESSAGE,
     PRODUCT_CLARIFY_MESSAGE,
     SAFE_HANDOFF_MESSAGE,
+    SERVICE_DEPT_CONTACT_MESSAGE,
+    SERVICE_HOURS_MESSAGE,
+    SHOPS_ADDRESS_MESSAGE,
     STOCK_PRICE_GUIDANCE_MESSAGE,
     THANKS_MESSAGE,
+    WORKING_HOURS_MESSAGE,
 )
 from app.ai_core.validator import FACT_TO_CONFIRMED_FIELDS, AIValidator
 from app.core.constants import AIValidationStatus, HandoffReason
@@ -67,6 +73,14 @@ _PRODUCT_MARKERS = (
     "планшет",
     "мышь",
     "клавиатур",
+    "ибп",
+    "бесперебойн",
+    "источник бесперебой",
+    "видеокарт",
+    "ssd",
+    "hdd",
+    "роутер",
+    "коммутатор",
 )
 
 _BUYBACK_STRONG = (
@@ -120,6 +134,8 @@ class AICore:
         requested_facts = detect_requested_commercial_facts(user_text)
 
         if intent == "greeting" and not requested_facts:
+            # Always greet back — even mid-dialog. Suppressing to "Чем ещё..."
+            # felt abrupt and broke the expected greeting in MAX/WhatsApp.
             return ProcessingResult(
                 decision=ProcessingDecision.RESPOND,
                 response_text=GREETING_MESSAGE,
@@ -152,14 +168,136 @@ class AICore:
                 metadata={"reason": "no_buyback", "intent": "buyback"},
             )
 
+        if self._is_refill_query(user_text):
+            if prompt_context.verified_sources:
+                return ProcessingResult(
+                    decision=ProcessingDecision.RESPOND,
+                    response_text=self._format_kb_answer(
+                        prompt_context.verified_sources,
+                        user_text,
+                    ),
+                    sources=source_ids,
+                    metadata={"reason": "refill_kb", "intent": "service_refill"},
+                )
+            return ProcessingResult(
+                decision=ProcessingDecision.RESPOND,
+                response_text=CARTRIDGE_REFILL_MESSAGE,
+                sources=[],
+                metadata={"reason": "refill_fallback", "intent": "service_refill"},
+            )
+
+        # Hours about service center first — not the services catalogue.
+        if self._is_hours_query(user_text) and self._mentions_service_center(user_text):
+            service_hours_sources = [
+                source
+                for source in prompt_context.verified_sources
+                if self._source_looks_like_service_hours(source)
+            ]
+            if service_hours_sources:
+                return ProcessingResult(
+                    decision=ProcessingDecision.RESPOND,
+                    response_text=self._format_kb_answer(service_hours_sources, user_text),
+                    sources=[source.source_id for source in service_hours_sources],
+                    metadata={"reason": "service_hours_kb", "intent": "company_info"},
+                )
+            return ProcessingResult(
+                decision=ProcessingDecision.RESPOND,
+                response_text=SERVICE_HOURS_MESSAGE,
+                sources=[],
+                metadata={"reason": "service_hours_fallback", "intent": "company_info"},
+            )
+
+        if self._is_service_dept_query(user_text):
+            if prompt_context.verified_sources:
+                return ProcessingResult(
+                    decision=ProcessingDecision.RESPOND,
+                    response_text=self._format_kb_answer(
+                        prompt_context.verified_sources,
+                        user_text,
+                    ),
+                    sources=source_ids,
+                    metadata={"reason": "service_dept_kb", "intent": "service_contact"},
+                )
+            return ProcessingResult(
+                decision=ProcessingDecision.RESPOND,
+                response_text=SERVICE_DEPT_CONTACT_MESSAGE,
+                sources=[],
+                metadata={"reason": "service_dept_fallback", "intent": "service_contact"},
+            )
+
+        # FAQ / company facts — answer from Knowledge Base (or static fallback).
+        faq_intents = {
+            "company_info",
+            "delivery_question",
+            "payment_question",
+            "warranty_question",
+            "service_question",
+        }
+        if (
+            intent in faq_intents
+            or self._is_hours_query(user_text)
+            or self._is_location_query(user_text)
+            or self._is_contacts_query(user_text)
+        ):
+            answer_sources = list(prompt_context.verified_sources)
+            if intent == "payment_question":
+                payment_sources = [
+                    source
+                    for source in answer_sources
+                    if self._source_looks_like_payment(source)
+                ]
+                if payment_sources:
+                    answer_sources = payment_sources
+                else:
+                    answer_sources = []
+            if self._is_hours_query(user_text):
+                hours_sources = [
+                    source
+                    for source in answer_sources
+                    if self._source_looks_like_hours(source)
+                ]
+                if hours_sources:
+                    answer_sources = hours_sources
+            if answer_sources:
+                return ProcessingResult(
+                    decision=ProcessingDecision.RESPOND,
+                    response_text=self._format_kb_answer(answer_sources, user_text),
+                    sources=[source.source_id for source in answer_sources],
+                    metadata={"reason": "faq_kb", "intent": intent},
+                )
+            fallback = self._faq_fallback_answer(user_text, intent)
+            if fallback:
+                return ProcessingResult(
+                    decision=ProcessingDecision.RESPOND,
+                    response_text=fallback,
+                    sources=[],
+                    metadata={"reason": "faq_fallback", "intent": intent},
+                )
+
+        catalog_products = self._catalog_product_sources(prompt_context.verified_sources)
+        if catalog_products and (
+            intent in {"product_search", "product_question", "availability_question", "price_question"}
+            or (requested_facts and requested_facts <= {"price", "stock"})
+        ):
+            return ProcessingResult(
+                decision=ProcessingDecision.RESPOND,
+                response_text=self._format_catalog_products_answer(
+                    catalog_products,
+                    user_text=user_text,
+                ),
+                sources=[item.source_id for item in catalog_products],
+                metadata={"reason": "website_catalog_products", "intent": intent},
+            )
+
         if not prompt_context.verified_sources:
             if intent in {"product_search", "product_question", "consultation"} and not requested_facts:
                 if self._has_product_identifier(user_text) or self._history_mentions_product(prompt_context) and self._has_product_identifier(user_text):
                     return ProcessingResult(
-                        decision=ProcessingDecision.RESPOND,
-                        response_text=STOCK_PRICE_GUIDANCE_MESSAGE,
+                        decision=ProcessingDecision.HANDOFF,
+                        response_text=SAFE_HANDOFF_MESSAGE,
+                        handoff_reason=HandoffReason.NO_CONFIRMED_DATA,
                         sources=[],
-                        metadata={"reason": "product_followup_guidance", "intent": intent},
+                        metadata={"reason": "product_followup_handoff", "intent": intent},
                     )
                 answer = self._product_clarify_answer(user_text, prompt_context)
                 return ProcessingResult(
@@ -169,18 +307,22 @@ class AICore:
                     metadata={"reason": "product_clarify", "intent": intent},
                 )
             if requested_facts and requested_facts <= {"price", "stock"}:
-                if self._is_broad_category_price_query(user_text):
+                if "картридж" in self._normalize_for_intent(user_text) and "заправ" not in self._normalize_for_intent(user_text):
                     return ProcessingResult(
                         decision=ProcessingDecision.RESPOND,
-                        response_text=self._category_price_narrowing_answer(user_text),
+                        response_text=CARTRIDGE_CLARIFY_MESSAGE,
                         sources=[],
-                        metadata={"reason": "category_price_narrowing", "intent": intent},
+                        metadata={"reason": "cartridge_clarify", "intent": intent},
                     )
                 return ProcessingResult(
                     decision=ProcessingDecision.RESPOND,
-                    response_text=STOCK_PRICE_GUIDANCE_MESSAGE,
+                    response_text=(
+                        "На сайте сейчас не нашёл точного совпадения. "
+                        "Уточните модель/бренд или напишите — передам запрос менеджеру. "
+                        "Каталог: https://www.iwt.ru/"
+                    ),
                     sources=[],
-                    metadata={"reason": "stock_price_guidance", "intent": intent},
+                    metadata={"reason": "stock_price_no_catalog_hits", "intent": intent},
                 )
             if intent == "unknown" or not requested_facts:
                 return ProcessingResult(
@@ -205,18 +347,22 @@ class AICore:
             and requested_facts <= {"price", "stock"}
             and not self._sources_cover_facts(prompt_context.verified_sources, requested_facts)
         ):
-            if self._is_broad_category_price_query(user_text):
+            if "картридж" in self._normalize_for_intent(user_text) and "заправ" not in self._normalize_for_intent(user_text):
                 return ProcessingResult(
                     decision=ProcessingDecision.RESPOND,
-                    response_text=self._category_price_narrowing_answer(user_text),
+                    response_text=CARTRIDGE_CLARIFY_MESSAGE,
                     sources=source_ids,
-                    metadata={"reason": "category_price_narrowing", "intent": intent},
+                    metadata={"reason": "cartridge_clarify", "intent": intent},
                 )
             return ProcessingResult(
                 decision=ProcessingDecision.RESPOND,
-                response_text=self._stock_price_guidance_answer(prompt_context.verified_sources),
+                response_text=(
+                    "На сайте сейчас не нашёл точного совпадения по наличию/цене. "
+                    "Уточните модель или артикул — либо передам запрос менеджеру. "
+                    "Каталог: https://www.iwt.ru/"
+                ),
                 sources=source_ids,
-                metadata={"reason": "stock_price_guidance", "intent": intent},
+                metadata={"reason": "stock_price_no_catalog_cover", "intent": intent},
             )
 
         try:
@@ -315,7 +461,11 @@ class AICore:
             return "manager_request"
         if self._is_buyback_query(text):
             return "buyback"
+        if self._is_refill_query(text) or self._is_service_dept_query(text):
+            return "service_question"
 
+        # Commercial facts before hours/location: "Вы работаете по безналу?"
+        # contains "работаете" but is a payment question, not schedule.
         facts = detect_requested_commercial_facts(text)
         if "price" in facts:
             return "price_question"
@@ -329,13 +479,18 @@ class AICore:
             return "warranty_question"
         if "characteristics" in facts:
             return "product_question"
+
+        if self._is_hours_query(text) and not self._mentions_product(normalized):
+            return "company_info"
+        if self._is_location_query(text) or self._is_contacts_query(text):
+            return "company_info"
         if self._mentions_product(normalized) or self._looks_like_product_followup(normalized, prompt_context):
             return "product_search"
         if any(token in normalized for token in ("консульт", "помогите выбрать", "что выбрать", "не знаю что")):
             return "consultation"
         if any(token in normalized for token in ("заказ", "заявк", "статус")):
             return "order_status"
-        if any(token in normalized for token in ("компани", "о вас", "iwt", "адрес", "режим работ")):
+        if any(token in normalized for token in ("компани", "о вас", "iwt", "адрес", "режим работ", "работаете")):
             return "company_info"
         if any(token in normalized for token in ("жалоб", "претенз", "недовольн")):
             return "complaint"
@@ -347,12 +502,8 @@ class AICore:
         normalized = self._normalize_for_intent(text)
         if not normalized:
             return False
-        if normalized in _GREETING_PHRASES:
-            return True
-        return any(
-            normalized == phrase or normalized.startswith(f"{phrase} ")
-            for phrase in _GREETING_PHRASES
-        )
+        # Only pure greetings — never treat product questions as greetings.
+        return normalized in _GREETING_PHRASES
 
     def _is_thanks(self, normalized: str) -> bool:
         return normalized in _THANKS_PHRASES or any(
@@ -450,20 +601,56 @@ class AICore:
         return {part.strip() for part in raw.split(",") if part.strip()}
 
     def _is_hours_query(self, text: str) -> bool:
-        lowered = text.lower()
-        markers = (
-            "режим",
-            "час",
-            "работ",
-            "открыт",
+        normalized = self._normalize_for_intent(text)
+        strong = (
+            "режим работ",
+            "час работ",
+            "часы работ",
             "график",
-            "завтра",
-            "сегодня",
+            "во сколько",
+            "до скольки",
+            "до скольк",
+            "открыт",
+            "закрыт",
             "выходн",
             "воскрес",
             "суббот",
         )
-        return any(marker in lowered for marker in markers)
+        # Explicit schedule phrases win even if text also mentions сервис/оплату.
+        if any(marker in normalized for marker in strong):
+            return True
+        # "Вы работаете по безналу?" — не про график.
+        if detect_requested_commercial_facts(text) & {
+            "payment_terms",
+            "delivery_terms",
+            "price",
+            "stock",
+            "warranty_terms",
+        }:
+            return False
+        if any(token in normalized for token in ("работаете", "работаем", "работает", "работа")):
+            return any(
+                marker in normalized
+                for marker in (
+                    "завтра",
+                    "сегодня",
+                    "сейчас",
+                    "режим",
+                    "час",
+                    "график",
+                    "выходн",
+                    "воскрес",
+                    "суббот",
+                    "пн",
+                    "вт",
+                    "ср",
+                    "чт",
+                    "пт",
+                    "сб",
+                    "вс",
+                )
+            )
+        return False
 
     def _is_location_query(self, text: str) -> bool:
         lowered = text.lower()
@@ -471,6 +658,7 @@ class AICore:
             "где наход",
             "где вы",
             "адрес",
+            "адресе",
             "забрать",
             "самовывоз",
             "пункт выдач",
@@ -478,8 +666,128 @@ class AICore:
             "как добрать",
             "где забрать",
             "где получить",
+            "где офис",
+            "как вас найти",
         )
         return any(marker in lowered for marker in markers)
+
+    def _is_contacts_query(self, text: str) -> bool:
+        normalized = self._normalize_for_intent(text)
+        markers = (
+            "контакт",
+            "телефон",
+            "почта",
+            "email",
+            "e-mail",
+            "whatsapp",
+            "ватсап",
+            "напишите номер",
+        )
+        return any(marker in normalized for marker in markers)
+
+    def _is_refill_query(self, text: str) -> bool:
+        normalized = self._normalize_for_intent(text)
+        has_refill = "заправ" in normalized
+        has_cartridge = "картридж" in normalized or "тонер" in normalized or "лазер" in normalized
+        return has_refill and (has_cartridge or has_refill)
+
+    def _mentions_service_center(self, text: str) -> bool:
+        normalized = self._normalize_for_intent(text)
+        markers = (
+            "сервисный центр",
+            "сервис центр",
+            "сервисцентра",
+            "сервисный отдел",
+            "технический отдел",
+            "гарантийный отдел",
+            "отдел гарантии",
+        )
+        if any(marker in normalized for marker in markers):
+            return True
+        # Short forms: «сервис» / «асц», but not «сервер».
+        tokens = normalized.split()
+        return "сервис" in tokens or "асц" in tokens
+
+    def _is_service_dept_query(self, text: str) -> bool:
+        # «до скольки работает сервис» — это режим, не каталог услуг.
+        if self._is_hours_query(text):
+            return False
+        normalized = self._normalize_for_intent(text)
+        markers = (
+            "технический отдел",
+            "сервисный отдел",
+            "отдел гарантии",
+            "гарантийный отдел",
+            "сервисный центр",
+            "сервис центр",
+            "техподдерж",
+            "техническая поддержка",
+            "связаться с сервисом",
+            "номер сервиса",
+            "телефон сервиса",
+        )
+        return any(marker in normalized for marker in markers)
+
+    def _source_looks_like_hours(self, source: VerifiedSource) -> bool:
+        haystack = f"{source.source_id} {source.title}".lower()
+        return any(
+            marker in haystack
+            for marker in ("hours-", "hours", "режим", "working_hours", "график")
+        )
+
+    def _source_looks_like_service_hours(self, source: VerifiedSource) -> bool:
+        haystack = f"{source.source_id} {source.title} {source.content[:240]}".lower()
+        if "hours-service" in haystack:
+            return True
+        return self._source_looks_like_hours(source) and (
+            "сервис" in haystack or "ремонт" in haystack
+        )
+
+    def _source_looks_like_payment(self, source: VerifiedSource) -> bool:
+        haystack = f"{source.source_id} {source.title} {source.content[:300]}".lower()
+        return any(
+            marker in haystack
+            for marker in ("payment", "оплат", "безнал", "сбербанк", "наличн", "картой")
+        )
+
+    def _faq_fallback_answer(self, text: str, intent: str) -> str | None:
+        if self._is_refill_query(text):
+            return CARTRIDGE_REFILL_MESSAGE
+        if self._is_hours_query(text) and self._mentions_service_center(text):
+            return SERVICE_HOURS_MESSAGE
+        if self._is_service_dept_query(text) or intent == "service_question":
+            return SERVICE_DEPT_CONTACT_MESSAGE
+        if intent == "payment_question" or "payment_terms" in detect_requested_commercial_facts(text):
+            return (
+                "Способы оплаты IWT.ru:\n\n"
+                "1) Наличными — в магазине или курьеру при получении.\n"
+                "2) Банковской картой — через ПАО Сбербанк на сайте.\n"
+                "3) Безналичный расчёт — для юрлиц и ИП (счёт / договор).\n\n"
+                "Подробнее: https://www.iwt.ru/payments/"
+            )
+        if intent == "delivery_question":
+            return (
+                "Доставка по Махачкале и Каспийску — курьером. "
+                "По России — транспортными компаниями. "
+                "Самовывоз: Махачкала, ул. Азиза Алиева, 17А и Каспийск, ул. Ленина, д. 6. "
+                "Точную стоимость и срок уточнит менеджер."
+            )
+        if self._is_hours_query(text):
+            return WORKING_HOURS_MESSAGE
+        if self._is_location_query(text):
+            return SHOPS_ADDRESS_MESSAGE
+        if self._is_contacts_query(text) or intent == "company_info":
+            if self._is_contacts_query(text) and not self._is_location_query(text):
+                return CONTACTS_MESSAGE
+            if intent == "company_info" and self._is_location_query(text):
+                return SHOPS_ADDRESS_MESSAGE
+        if intent == "warranty_question":
+            return (
+                "На технику действует официальная гарантия производителя "
+                "(обычно от 12 до 36 месяцев). Гарантийное обслуживание — через сервисный центр IWT. "
+                "Контакты: 8 (8722) 56-06-06 доб. 2, сервисный центр 8 928 058-06-06, info@iwt.ru."
+            )
+        return None
 
     def _stock_price_guidance_answer(self, sources: list[VerifiedSource]) -> str:
         for source in sources:
@@ -586,6 +894,18 @@ class AICore:
                 haystack = f"{source.source_id} {source.title}".lower()
                 if "buyback" in haystack or "скуп" in haystack or "выкуп" in haystack:
                     return source
+        if self._is_refill_query(user_message):
+            for source in sources:
+                haystack = f"{source.source_id} {source.title}".lower()
+                if "refill" in haystack or "заправ" in haystack:
+                    return source
+        if self._is_hours_query(user_message) and self._mentions_service_center(user_message):
+            for source in sources:
+                if self._source_looks_like_service_hours(source):
+                    return source
+            for source in sources:
+                if self._source_looks_like_hours(source):
+                    return source
         if self._is_sunday_query(user_message):
             for source in sources:
                 haystack = f"{source.source_id} {source.title} {source.content}".lower()
@@ -598,14 +918,29 @@ class AICore:
                 haystack = f"{source.source_id} {source.title} {source.content}".lower()
                 if "lunch" in haystack or "hours-lunch" in haystack or "без перерыва" in haystack:
                     return source
+        if "payment_terms" in detect_requested_commercial_facts(user_message):
+            for source in sources:
+                haystack = f"{source.source_id} {source.title} {source.content[:240]}".lower()
+                if (
+                    "payment" in haystack
+                    or "оплат" in haystack
+                    or "безнал" in haystack
+                    or "сбербанк" in haystack
+                ):
+                    return source
         if self._is_hours_query(user_message) and not self._is_location_query(user_message):
             for source in sources:
-                haystack = f"{source.source_id} {source.title}".lower()
+                if self._source_looks_like_hours(source):
+                    return source
+        if self._is_service_dept_query(user_message):
+            for source in sources:
+                haystack = f"{source.source_id} {source.title} {source.content[:240]}".lower()
                 if (
-                    "hours-full" in haystack
-                    or "hours" in haystack
-                    or "режим" in haystack
-                    or "working_hours" in haystack
+                    "services-contact" in haystack
+                    or "services-overview" in haystack
+                    or "сервисн" in haystack
+                    or "техническ" in haystack
+                    or "928 058" in haystack
                 ):
                     return source
         if self._is_location_query(user_message):
@@ -628,4 +963,51 @@ class AICore:
         source = self._pick_best_source(sources, user_message)
         content = source.content.strip()
         return content or SAFE_HANDOFF_MESSAGE
+
+    def _catalog_product_sources(self, sources: list[VerifiedSource]) -> list[VerifiedSource]:
+        products: list[VerifiedSource] = []
+        for source in sources:
+            meta = source.metadata or {}
+            confirmed = {part.strip() for part in str(meta.get("confirmed_fields", "")).split(",") if part.strip()}
+            is_store = meta.get("source") == "website_store" or source.source_type == "website_provider"
+            looks_like_product = bool(meta.get("price") or meta.get("source_url") or "price" in confirmed)
+            if is_store and looks_like_product:
+                products.append(source)
+        return products
+
+    def _format_catalog_products_answer(
+        self,
+        sources: list[VerifiedSource],
+        *,
+        user_text: str = "",
+    ) -> str:
+        intro = "На сайте IWT есть такие варианты:"
+        low = (user_text or "").lower().replace("ё", "е")
+        if re.search(r"(?<![а-яa-z0-9_])ибп(?![а-яa-z0-9_])", low) or "бесперебой" in low or re.search(
+            r"(?<![а-яa-z0-9_])ups(?![а-яa-z0-9_])", low
+        ):
+            intro = (
+                "ИБП (источник бесперебойного питания) — на сайте IWT есть такие варианты:"
+            )
+        lines = [intro]
+        for source in sources[:5]:
+            meta = source.metadata or {}
+            title = source.title.strip() or "Товар"
+            price = meta.get("price")
+            url = meta.get("source_url") or ""
+            if price:
+                try:
+                    price_txt = f"{float(price):,.0f}".replace(",", " ")
+                    lines.append(f"• {title} — {price_txt} руб.")
+                except ValueError:
+                    lines.append(f"• {title}")
+            else:
+                lines.append(f"• {title}")
+            if url:
+                lines.append(f"  {url}")
+        lines.append(
+            "\nЕсли нужна помощь с подбором конкретной модели — напишите параметры "
+            "или попросите связать с менеджером."
+        )
+        return "\n".join(lines)
 

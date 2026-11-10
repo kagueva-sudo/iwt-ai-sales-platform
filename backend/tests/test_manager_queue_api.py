@@ -25,23 +25,31 @@ def test_manager_queue_lists_handoff_from_channel_webhook() -> None:
 
 
 def test_manager_queue_get_and_update_status() -> None:
-    with TestClient(app) as client:
-        post = client.post(
-            "/channels/max/webhook",
-            json={
-                # Не подбираем из KB: нужен гарантированный handoff кейс.
-                "text": "zzzzxqwe123",
-                "user_id": "mq-user-1",
-                "contact": "+79990000001",
-            },
-        )
-        assert post.status_code == 200
-        assert post.json()["handoff_required"] is True
-        items = client.get("/manager-queue", params={"status": "new"}).json()
-        request_id = next(
-            item["request_id"] for item in items if item["customer_contact"] == "+79990000001"
+    import asyncio
+    from uuid import uuid4
+
+    from app.core.constants import ChannelType, HandoffReason
+    from app.domain.manager_queue import ManagerQueueItem
+    from app.services.composition import get_manager_queue_repository
+
+    request_id = f"mq-api-{uuid4()}"
+
+    async def _seed() -> None:
+        await get_manager_queue_repository().add(
+            ManagerQueueItem(
+                request_id=request_id,
+                channel=ChannelType.MAX,
+                customer_name="Test Client",
+                customer_contact="+79990000001",
+                conversation_history=["Нужна помощь"],
+                ai_response="Передаю менеджеру",
+                handoff_reason=HandoffReason.NO_INFORMATION,
+            )
         )
 
+    asyncio.run(_seed())
+
+    with TestClient(app) as client:
         detail = client.get(f"/manager-queue/{request_id}")
         assert detail.status_code == 200
         assert detail.json()["request_id"] == request_id

@@ -3,8 +3,8 @@
 | Поле | Значение |
 |------|----------|
 | Архитектура | Architecture Freeze v2.2 |
-| Текущая позиция | Sprint 17 завершён → далее Sprint 18 |
-| Обновлено | 2026-08-07 |
+| Текущая позиция | Manager Inbox UI → далее Sprint 18 Email / защита inbox |
+| Обновлено | 2026-11-06 |
 
 Связанные документы: `PROJECT_SPEC.md`, `DEVELOPMENT_RULES.md`, `PROJECT_MEMORY.md`, `ACCEPTANCE_CRITERIA.md`, `README.md`.
 
@@ -47,6 +47,8 @@
 ✔ Sprint 16 MAX
 
 ✔ Sprint 17 WhatsApp
+
+✔ Manager Inbox UI (Входящие)
 
 ⬜ Sprint 18 Email
 
