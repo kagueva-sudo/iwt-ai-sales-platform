@@ -13,4 +13,6 @@ def map_manager_queue_item_to_schema(item: ManagerQueueItem) -> ManagerQueueItem
         handoff_reason=item.handoff_reason,
         status=item.status,
         created_at=item.created_at,
+        email_message_id=item.email_message_id,
+        email_subject=item.email_subject,
     )

@@ -81,6 +81,18 @@ class ManagerQueueModel(Base):
     handoff_reason: Mapped[str] = mapped_column(String(64), index=True)
     status: Mapped[str] = mapped_column(String(32), index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC), index=True)
+    email_message_id: Mapped[str | None] = mapped_column(String(512), nullable=True, index=True)
+    email_subject: Mapped[str | None] = mapped_column(String(998), nullable=True)
+
+
+class EmailProcessedModel(Base):
+    __tablename__ = "email_processed"
+
+    message_id: Mapped[str] = mapped_column(String(512), primary_key=True)
+    request_id: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+    from_address: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    subject: Mapped[str | None] = mapped_column(String(998), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC), index=True)
 
 
 class SessionModel(Base):

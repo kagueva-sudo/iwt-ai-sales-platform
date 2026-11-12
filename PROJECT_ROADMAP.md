@@ -3,7 +3,7 @@
 | Поле | Значение |
 |------|----------|
 | Архитектура | Architecture Freeze v2.2 |
-| Текущая позиция | Manager Inbox UI → далее Sprint 18 Email / защита inbox |
+| Текущая позиция | Sprint 18 Email (IMAP→/inbox) → далее защита inbox |
 | Обновлено | 2026-11-06 |
 
 Связанные документы: `PROJECT_SPEC.md`, `DEVELOPMENT_RULES.md`, `PROJECT_MEMORY.md`, `ACCEPTANCE_CRITERIA.md`, `README.md`.
@@ -50,7 +50,7 @@
 
 ✔ Manager Inbox UI (Входящие)
 
-⬜ Sprint 18 Email
+✔ Sprint 18 Email (IMAP → /inbox, черновик AI, SMTP от менеджера)
 
 ⬜ Sprint 19 Prompt Optimization
 
@@ -118,7 +118,7 @@ Channels → Adapters → Gateway → ConversationState → SourceSelector
 | 15 | Website Live API | Live HttpWebsiteTransport, auth, search/products, confirmed_fields | ✔ |
 | 16 | MAX | Production-подключение канала MAX | ✔ |
 | 17 | WhatsApp | Production-подключение WhatsApp | ✔ |
-| 18 | Email | Production-подключение Email | ⬜ |
+| 18 | Email | IMAP ya.ru → /inbox, SMTP ответ менеджера | ✔ |
 | 19 | Prompt Optimization | Улучшение Prompt Builder / политик без смены архитектуры | ⬜ |
 | 20 | Knowledge UI | UI для управления Knowledge Base | ⬜ |
 

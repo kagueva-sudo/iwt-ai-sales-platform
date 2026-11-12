@@ -42,6 +42,7 @@ class HandoffReason(StrEnum):
     COMMERCIAL_OFFER = "commercial_offer"
     COMPLAINT = "complaint"
     DISCOUNT_REQUEST = "discount_request"
+    EMAIL_INBOX_REVIEW = "email_inbox_review"
     UNKNOWN = "unknown"
 
 

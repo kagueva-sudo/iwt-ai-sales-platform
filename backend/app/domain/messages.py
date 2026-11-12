@@ -15,3 +15,4 @@ class Message:
     status: ProcessingStatus = ProcessingStatus.RECEIVED
     id: str = field(default_factory=lambda: str(uuid4()))
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    metadata: dict[str, str] = field(default_factory=dict)

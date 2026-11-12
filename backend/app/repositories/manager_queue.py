@@ -27,6 +27,7 @@ class InMemoryManagerQueueRepository(ManagerQueueRepository):
         if item is None:
             return None
         item.status = status
+        self._items[request_id] = item
         return item
 
     async def list_by_status(self, status: ManagerQueueStatus) -> list[ManagerQueueItem]:
@@ -92,6 +93,8 @@ class SqlAlchemyManagerQueueRepository(ManagerQueueRepository):
             handoff_reason=item.handoff_reason.value,
             status=item.status.value,
             created_at=item.created_at,
+            email_message_id=item.email_message_id,
+            email_subject=item.email_subject,
         )
 
     def _to_domain(self, model: ManagerQueueModel) -> ManagerQueueItem:
@@ -113,4 +116,6 @@ class SqlAlchemyManagerQueueRepository(ManagerQueueRepository):
             handoff_reason=HandoffReason(model.handoff_reason),
             status=ManagerQueueStatus(model.status),
             created_at=model.created_at,
+            email_message_id=getattr(model, "email_message_id", None),
+            email_subject=getattr(model, "email_subject", None),
         )

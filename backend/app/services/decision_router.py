@@ -34,21 +34,25 @@ class DefaultDecisionRouter(DecisionRouter):
             category="pipeline",
         )
 
+        # Email is inbox-only: never auto-send; manager replies via SMTP from /inbox.
+        auto_send = result.channel != ChannelType.EMAIL
+
         if result.decision == ProcessingDecision.RESPOND:
-            await self.response_sender.send(self._to_outbound_message(result))
-            await self.logging_service.log_audit(
-                PipelineEventType.RESPONSE_SENT.value,
-                {
-                    "request_id": result.request_id or "",
-                    "channel": (result.channel or ChannelType.INTERNAL).value,
-                    "response_text": result.response_text or "",
-                },
-                category="pipeline",
-            )
+            if auto_send:
+                await self.response_sender.send(self._to_outbound_message(result))
+                await self.logging_service.log_audit(
+                    PipelineEventType.RESPONSE_SENT.value,
+                    {
+                        "request_id": result.request_id or "",
+                        "channel": (result.channel or ChannelType.INTERNAL).value,
+                        "response_text": result.response_text or "",
+                    },
+                    category="pipeline",
+                )
             return
 
         if result.decision in (ProcessingDecision.HANDOFF, ProcessingDecision.NEEDS_MORE_DATA):
-            if result.response_text:
+            if auto_send and result.response_text:
                 await self.response_sender.send(self._to_outbound_message(result))
                 await self.logging_service.log_audit(
                     PipelineEventType.RESPONSE_SENT.value,

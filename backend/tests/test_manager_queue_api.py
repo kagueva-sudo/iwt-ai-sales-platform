@@ -101,15 +101,19 @@ def test_manager_queue_api_does_not_import_ai_core() -> None:
 def test_manager_queue_lists_all_items() -> None:
     with TestClient(app) as client:
         before = len(client.get("/manager-queue").json())
-        client.post(
+        response = client.post(
             "/channels/email/webhook",
             json={
                 "subject": "Вопрос",
                 "body": "Нужна цена",
                 "from": "mq@example.com",
+                "message_id": "<mq-email-list@example.com>",
             },
         )
+        assert response.status_code == 200
+        assert response.json()["handoff_required"] is True
         after = client.get("/manager-queue").json()
 
-    # "Нужна цена" — клиенту даём ответ (safe guidance), handoff не создаётся.
-    assert len(after) == before
+    # Email — всегда в /inbox с черновиком AI (без автоответа клиенту).
+    assert len(after) == before + 1
+    assert after[0]["channel"] == "email"

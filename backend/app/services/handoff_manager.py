@@ -23,11 +23,18 @@ class DefaultHandoffManager(HandoffManager):
         item = ManagerQueueItem(
             request_id=result.request_id or str(uuid4()),
             channel=result.channel or ChannelType.INTERNAL,
-            customer_name=result.customer_name,
+            customer_name=(
+                result.metadata.get("email_subject")
+                if result.channel == ChannelType.EMAIL
+                else result.customer_name
+            )
+            or result.customer_name,
             customer_contact=result.customer_contact,
             conversation_history=list(result.conversation_history),
             ai_response=result.response_text,
             handoff_reason=result.handoff_reason or HandoffReason.UNKNOWN,
+            email_message_id=result.metadata.get("email_message_id"),
+            email_subject=result.metadata.get("email_subject"),
         )
         saved = await self.repository.add(item)
         if self.learning_service is not None:

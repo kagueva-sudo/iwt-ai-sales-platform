@@ -24,3 +24,5 @@ class ManagerQueueItem:
     customer_name: str | None = None
     status: ManagerQueueStatus = ManagerQueueStatus.NEW
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    email_message_id: str | None = None
+    email_subject: str | None = None

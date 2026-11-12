@@ -1,5 +1,17 @@
 # Project Memory
 
+## 2026-11-11 — Email → /inbox (Sprint 18)
+
+Статус: принято.
+
+Режим «только inbox» для `iwt.iwt@ya.ru`:
+
+- IMAP poller (`email-worker`) → AI draft → `manager_queue` → `/inbox`
+- Автоответов SMTP нет; письмо клиенту только при «Готово» с ответом менеджера
+- `EmailInboxPolicy` принудительно HANDOFF для канала email
+- Transport: `backend/app/integrations/email/`; setup: `EMAIL_SETUP.md`
+- AI Core не знает про IMAP/SMTP
+
 ## 2026-11-06 — Expanded learning / FAQ phrase bank
 
 Статус: принято.

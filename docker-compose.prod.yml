@@ -20,6 +20,21 @@ services:
       retries: 3
       start_period: 20s
 
+  email-worker:
+    build:
+      context: ./backend
+    env_file:
+      - .env
+    restart: unless-stopped
+    command: ["python", "-m", "app.workers.email_worker"]
+    volumes:
+      - ./knowledge:/knowledge:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+
   db:
     image: postgres:16-alpine
     restart: unless-stopped

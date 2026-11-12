@@ -29,6 +29,7 @@
     commercial_offer: "Коммерческое предложение",
     complaint: "Жалоба",
     discount_request: "Запрос скидки",
+    email_inbox_review: "Черновик Email",
     unknown: "Не указано",
   };
 
@@ -88,6 +89,14 @@
   }
 
   function customerTitle(item) {
+    if (item.channel === "email") {
+      return (
+        item.email_subject ||
+        item.customer_name ||
+        item.customer_contact ||
+        "Письмо без темы"
+      );
+    }
     return item.customer_name || item.customer_contact || "Без имени";
   }
 
@@ -218,6 +227,27 @@
     els.doneBtn.disabled = closed;
     els.cancelBtn.disabled = closed;
     els.managerAnswer.disabled = closed;
+
+    const answerLabel = document.getElementById("manager-answer-label");
+    if (item.channel === "email") {
+      if (answerLabel) {
+        answerLabel.textContent =
+          "Ответ клиенту по Email (уйдёт письмом при «Готово»)";
+      }
+      els.managerAnswer.placeholder =
+        "Отредактируйте черновик AI и нажмите «Готово»";
+    } else {
+      if (answerLabel) {
+        answerLabel.textContent =
+          "Ответ менеджера (для обучения, необязательно)";
+      }
+      els.managerAnswer.placeholder = "Кратко: что ответили клиенту";
+    }
+    if (!closed && els.managerAnswer.dataset.forId !== item.request_id) {
+      els.managerAnswer.value =
+        item.channel === "email" ? item.ai_response || "" : "";
+      els.managerAnswer.dataset.forId = item.request_id;
+    }
   }
 
   function render() {
@@ -265,9 +295,13 @@
       row.request_id === updated.request_id ? updated : row
     );
     render();
+    const emailSent =
+      status === "done" && item.channel === "email" && (body.manager_answer || "").trim();
     setHint(
       status === "done"
-        ? "Заявка закрыта"
+        ? emailSent
+          ? "Заявка закрыта, письмо отправлено"
+          : "Заявка закрыта"
         : status === "in_progress"
           ? "Заявка взята в работу"
           : "Статус обновлён"

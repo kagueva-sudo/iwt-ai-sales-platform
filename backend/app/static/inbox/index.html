@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Входящие — IWT AI Sales</title>
-    <link rel="stylesheet" href="/static/inbox/styles.css?v=2" />
+    <link rel="stylesheet" href="/static/inbox/styles.css?v=4" />
   </head>
   <body>
     <div class="app">
@@ -75,10 +75,12 @@
             </div>
 
             <footer class="done-box" id="done-box">
-              <label for="manager-answer">Ответ менеджера (для обучения, необязательно)</label>
+              <label for="manager-answer" id="manager-answer-label"
+                >Ответ менеджера (для обучения, необязательно)</label
+              >
               <textarea
                 id="manager-answer"
-                rows="3"
+                rows="10"
                 placeholder="Кратко: что ответили клиенту"
               ></textarea>
               <div class="done-actions">
@@ -92,6 +94,6 @@
         </section>
       </main>
     </div>
-    <script src="/static/inbox/inbox.js?v=2"></script>
+    <script src="/static/inbox/inbox.js?v=3"></script>
   </body>
 </html>

@@ -40,9 +40,10 @@ textarea {
 }
 
 .app {
-  max-width: 1280px;
+  max-width: 1760px;
+  width: 100%;
   margin: 0 auto;
-  padding: 20px 20px 40px;
+  padding: 16px 16px 32px;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -140,7 +141,7 @@ textarea {
 
 .workspace {
   display: grid;
-  grid-template-columns: minmax(280px, 360px) 1fr;
+  grid-template-columns: minmax(300px, 400px) 1fr;
   gap: 16px;
   flex: 1;
   min-height: 0;
@@ -391,11 +392,13 @@ textarea {
 
 .done-box textarea {
   width: 100%;
+  min-height: 220px;
   border: 1px solid var(--line);
   border-radius: 10px;
-  padding: 10px 12px;
+  padding: 12px 14px;
   resize: vertical;
   background: #fff;
+  line-height: 1.45;
 }
 
 .done-actions {

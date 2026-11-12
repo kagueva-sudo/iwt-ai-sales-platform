@@ -86,6 +86,9 @@ class MessagePipelineService:
         result.metadata.setdefault("session_id", session.session_id)
         result.metadata.setdefault("dialog_id", session.dialog_id)
         result.metadata.setdefault("sources_count", str(len(selection.sources)))
+        for key, value in (message.metadata or {}).items():
+            if value and key not in result.metadata:
+                result.metadata[key] = value
         return result
 
     def _expand_search_query(self, text: str, conversation: ConversationContext) -> str:

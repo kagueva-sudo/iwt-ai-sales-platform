@@ -64,14 +64,27 @@ async def test_whatsapp_adapter_rejects_empty_payload() -> None:
         await adapter.normalize_incoming({"wa_id": "1"})
 
 
+class _RecordingAdapter:
+    def __init__(self, channel: ChannelType) -> None:
+        self.channel = channel
+        self.sent: list[Message] = []
+
+    async def normalize_incoming(self, payload: dict[str, object]) -> Message:  # pragma: no cover
+        raise NotImplementedError
+
+    async def send_message(self, message: Message) -> str:
+        self.sent.append(message)
+        return message.id
+
+
 @pytest.mark.asyncio
 async def test_channel_response_sender_routes_email_and_whatsapp() -> None:
-    email = EmailChannelAdapter()
-    whatsapp = WhatsAppChannelAdapter()
+    email = _RecordingAdapter(ChannelType.EMAIL)
+    whatsapp = _RecordingAdapter(ChannelType.WHATSAPP)
     sender = ChannelResponseSender(
         adapters={
-            ChannelType.EMAIL: email,
-            ChannelType.WHATSAPP: whatsapp,
+            ChannelType.EMAIL: email,  # type: ignore[dict-item]
+            ChannelType.WHATSAPP: whatsapp,  # type: ignore[dict-item]
         },
         fallback=InMemoryResponseSender(),
     )
@@ -101,7 +114,12 @@ def test_email_webhook_creates_handoff_without_sources() -> None:
     assert response.json()["handoff_required"] is True
 
 
-def test_whatsapp_webhook_creates_guidance_without_sources() -> None:
+def test_whatsapp_webhook_creates_guidance_without_sources(monkeypatch) -> None:
+    # Avoid hitting live Meta API when .env has WhatsApp credentials.
+    monkeypatch.setattr(
+        "app.channel_adapters.whatsapp_adapter.is_whatsapp_configured",
+        lambda: False,
+    )
     with TestClient(app) as client:
         response = client.post(
             "/channels/whatsapp/webhook",

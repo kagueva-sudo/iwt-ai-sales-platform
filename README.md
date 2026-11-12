@@ -20,7 +20,7 @@ Backend foundation for the commercial AI Sales Platform.
 - Message queues
 - RBAC / SSO
 - Admin Panel
-- Real integrations with 1C, Bitrix24, or Email (MAX и WhatsApp — см. ниже)
+- Real integrations with 1C or Bitrix24 (MAX, WhatsApp и Email → `/inbox` — см. ниже и `EMAIL_SETUP.md`)
 - Advanced monitoring infrastructure
 
 ## Local Run

@@ -41,6 +41,17 @@ class Settings(BaseSettings):
     whatsapp_api_version: str = "v21.0"
     whatsapp_api_timeout: float = 10.0
 
+    email_enabled: bool = False
+    email_imap_host: str = "imap.yandex.ru"
+    email_imap_port: int = 993
+    email_smtp_host: str = "smtp.yandex.ru"
+    email_smtp_port: int = 465
+    email_username: str = ""
+    email_password: str = ""
+    email_from: str = ""
+    email_poll_seconds: int = 60
+    email_mailbox: str = "INBOX"
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
 

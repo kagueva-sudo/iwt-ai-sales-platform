@@ -133,6 +133,7 @@ def get_manager_queue_service() -> ManagerQueueService:
     return ManagerQueueService(
         _MANAGER_QUEUE_REPOSITORY,
         learning_service=_LEARNING_SERVICE,
+        email_adapter=_EMAIL_ADAPTER,
     )
 
 

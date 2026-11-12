@@ -16,6 +16,8 @@ class ManagerQueueItemSchema(BaseModel):
     handoff_reason: HandoffReason
     status: ManagerQueueStatus
     created_at: datetime
+    email_message_id: str | None = None
+    email_subject: str | None = None
 
 
 class ManagerQueueStatusUpdateSchema(BaseModel):

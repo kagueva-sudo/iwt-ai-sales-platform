@@ -7,6 +7,7 @@ from app.domain.processing import ProcessingResult
 from app.repositories.customers import CustomerRepository
 from app.repositories.messages import MessageRepository
 from app.services.composition import build_decision_router, build_message_pipeline
+from app.services.email_inbox_policy import apply_email_inbox_policy
 from app.services.message_pipeline import MessagePipelineService
 
 
@@ -38,6 +39,7 @@ class MessageService:
                 session.flush()
 
                 result = await self.pipeline.process(message)
+                result = apply_email_inbox_policy(result)
                 await self.decision_router.route(result)
 
                 outbound = map_processing_result_to_message(result, inbound=message)
