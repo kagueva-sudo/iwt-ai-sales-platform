@@ -34,6 +34,25 @@ async def verify_whatsapp_webhook(
 
 @router.post("/webhook", response_model=AIResponseSchema | None)
 async def receive_whatsapp_webhook(payload: dict[str, object]) -> AIResponseSchema | Response:
+    # Temporary diagnostics: log every Meta callback (statuses + messages).
+    try:
+        entry0 = (payload.get("entry") or [None])[0] if isinstance(payload.get("entry"), list) else None
+        changes = (entry0 or {}).get("changes") if isinstance(entry0, dict) else None
+        change0 = changes[0] if isinstance(changes, list) and changes else {}
+        field = change0.get("field") if isinstance(change0, dict) else None
+        value = change0.get("value") if isinstance(change0, dict) else {}
+        meta = (value or {}).get("metadata") if isinstance(value, dict) else {}
+        logger.info(
+            "WhatsApp webhook POST object=%s field=%s phone_id=%s has_messages=%s has_statuses=%s",
+            payload.get("object"),
+            field,
+            (meta or {}).get("phone_number_id") if isinstance(meta, dict) else None,
+            bool(isinstance(value, dict) and value.get("messages")),
+            bool(isinstance(value, dict) and value.get("statuses")),
+        )
+    except Exception:  # noqa: BLE001 — never break webhook on debug logging
+        logger.exception("WhatsApp webhook debug log failed")
+
     # Status / delivery callbacks: acknowledge without running the pipeline.
     if not is_whatsapp_processable_update(payload):
         return Response(content="EVENT_RECEIVED", media_type="text/plain", status_code=200)

@@ -188,6 +188,47 @@ async def test_manager_request_goes_to_handoff() -> None:
     assert result.metadata.get("intent") == "manager_request"
 
 
+async def test_product_rejection_goes_to_manager_not_warranty() -> None:
+    warranty = VerifiedSource(
+        source_id="warranty-service",
+        source_type="knowledge_base",
+        title="Гарантия",
+        content="Условия гарантийного обслуживания. Картриджи расходные материалы.",
+        metadata={"confirmed_fields": "content,warranty_terms"},
+    )
+    llm = StubLLMProvider("Условия гарантийного обслуживания IWT.ru")
+    pipeline, provider = _build_pipeline(llm=llm, sources=[warranty])
+    await pipeline.process(
+        Message(
+            text="у вас есть в наличии картриджи pc-211",
+            channel=ChannelType.MAX,
+            direction=MessageDirection.INBOUND,
+            customer_id="u-reject",
+        )
+    )
+    await pipeline.process(
+        Message(
+            text="мне нужен картридж",
+            channel=ChannelType.MAX,
+            direction=MessageDirection.INBOUND,
+            customer_id="u-reject",
+        )
+    )
+    result = await pipeline.process(
+        Message(
+            text="Это, не то",
+            channel=ChannelType.MAX,
+            direction=MessageDirection.INBOUND,
+            customer_id="u-reject",
+        )
+    )
+    assert result.decision == ProcessingDecision.HANDOFF
+    assert result.response_text == SAFE_HANDOFF_MESSAGE
+    assert "гарант" not in (result.response_text or "").lower()
+    assert result.metadata.get("reason") == "product_rejection"
+    assert "не то" in provider.last_query.lower() or provider.last_query.lower() == "это, не то"
+
+
 async def test_delivery_question_uses_kb_without_handoff() -> None:
     source = VerifiedSource(
         source_id="delivery-1",

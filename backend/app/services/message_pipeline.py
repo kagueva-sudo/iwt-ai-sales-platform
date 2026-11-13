@@ -99,6 +99,19 @@ class MessagePipelineService:
         words = stripped.split()
         if len(words) > 6:
             return stripped
+        lowered = stripped.lower()
+        # Do not expand rejections — that pulled warranty KB via «картридж … не то».
+        rejection_markers = (
+            "не то",
+            "не тот",
+            "не та",
+            "не те",
+            "не подходит",
+            "неправильн",
+            "совсем не то",
+        )
+        if any(marker in lowered for marker in rejection_markers):
+            return stripped
         prior_client = [
             item.text.strip()
             for item in conversation.recent_messages

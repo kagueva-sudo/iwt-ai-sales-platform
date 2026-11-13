@@ -61,6 +61,26 @@ _MANAGER_MARKERS = (
     "хочу менеджер",
 )
 
+# Client rejects the last product suggestion → hand off, do not invent another answer.
+_PRODUCT_REJECTION_MARKERS = (
+    "не то",
+    "не тот",
+    "не та",
+    "не те",
+    "не то что",
+    "не то,",
+    "это не то",
+    "это, не то",
+    "не подходит",
+    "неправильн",
+    "не то нужно",
+    "не то надо",
+    "совсем не то",
+    "не то совсем",
+    "другой нужен",
+    "не то предложение",
+)
+
 _PRODUCT_MARKERS = (
     "товар",
     "ноутбук",
@@ -158,6 +178,15 @@ class AICore:
                 handoff_reason=HandoffReason.CLIENT_REQUEST_MANAGER,
                 sources=source_ids,
                 metadata={"reason": "client_request_manager", "intent": intent},
+            )
+
+        if intent == "product_rejection" or self._is_product_rejection(user_text, prompt_context):
+            return ProcessingResult(
+                decision=ProcessingDecision.HANDOFF,
+                response_text=SAFE_HANDOFF_MESSAGE,
+                handoff_reason=HandoffReason.COMPLEX_REQUEST,
+                sources=source_ids,
+                metadata={"reason": "product_rejection", "intent": "product_rejection"},
             )
 
         if self._is_buyback_query(user_text):
@@ -401,6 +430,7 @@ class AICore:
         result.metadata.setdefault("intent", intent)
         if (
             result.decision != ProcessingDecision.RESPOND
+            and requested_facts
             and self._sources_cover_facts(prompt_context.verified_sources, requested_facts)
         ):
             return ProcessingResult(
@@ -459,6 +489,8 @@ class AICore:
             return "thanks"
         if self._is_manager_request(normalized):
             return "manager_request"
+        if self._is_product_rejection(text, prompt_context):
+            return "product_rejection"
         if self._is_buyback_query(text):
             return "buyback"
         if self._is_refill_query(text) or self._is_service_dept_query(text):
@@ -512,6 +544,23 @@ class AICore:
 
     def _is_manager_request(self, normalized: str) -> bool:
         return any(marker in normalized for marker in _MANAGER_MARKERS)
+
+    def _is_product_rejection(self, text: str, prompt_context: PromptContext) -> bool:
+        normalized = self._normalize_for_intent(text)
+        if not normalized:
+            return False
+        if not any(marker in normalized for marker in _PRODUCT_REJECTION_MARKERS):
+            return False
+        # Reject only in product context (recent client/assistant talk about goods).
+        if self._mentions_product(normalized):
+            return True
+        if self._history_mentions_product(prompt_context):
+            return True
+        history = " ".join(item.text.lower() for item in prompt_context.recent_messages[-6:])
+        return any(
+            token in history
+            for token in ("в наличии", "на сайте iwt", "вариант", "цена", "артикул", "pc-", "картридж")
+        )
 
     def _mentions_product(self, normalized: str) -> bool:
         return any(marker in normalized for marker in _PRODUCT_MARKERS)
@@ -586,8 +635,9 @@ class AICore:
     def _sources_cover_facts(self, sources: list[VerifiedSource], facts: set[str]) -> bool:
         if not sources:
             return False
+        # Empty facts must not unlock KB dump (that invented warranty after «не то»).
         if not facts:
-            return True
+            return False
         for fact in facts:
             needed = FACT_TO_CONFIRMED_FIELDS.get(fact, {fact})
             if not any(self._confirmed_fields(source) & needed for source in sources):
@@ -762,7 +812,9 @@ class AICore:
                 "Способы оплаты IWT.ru:\n\n"
                 "1) Наличными — в магазине или курьеру при получении.\n"
                 "2) Банковской картой — через ПАО Сбербанк на сайте.\n"
-                "3) Безналичный расчёт — для юрлиц и ИП (счёт / договор).\n\n"
+                "3) Безналичный расчёт — для юрлиц и ИП (счёт / договор). "
+                "Корпоративный отдел: 8 (8722) 56-06-06, info@iwt.ru. "
+                "Оформление заказа также в WhatsApp и MAX: +7 903 488-00-77.\n\n"
                 "Подробнее: https://www.iwt.ru/payments/"
             )
         if intent == "delivery_question":
